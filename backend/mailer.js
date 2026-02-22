@@ -1,11 +1,12 @@
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: "gmail",
+  secure: true,
   auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS
-  }
+    user: process.env.MAIL_USER, // Updated to match .env
+    pass: process.env.MAIL_PASS, // Updated to match .env
+  },
 });
 
 /**
@@ -15,7 +16,7 @@ async function notifyP1Online() {
   console.log("[MAILER] Attempting to send notification...");
   console.log("[MAILER] From:", process.env.MAIL_USER);
   console.log("[MAILER] To:", process.env.MAIL_TO);
-  
+
   const mailOptions = {
     from: process.env.MAIL_USER,
     to: process.env.MAIL_TO,

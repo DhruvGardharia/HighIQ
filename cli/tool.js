@@ -7,7 +7,7 @@ const readline = require("readline");
 /*
   CONFIG
 */
-const BASE_URL = process.env.TOOL_URL ;
+const BASE_URL =  "http://localhost:3000";
 const command = process.argv[2];
 const ROLE = process.argv[3] || process.env.ROLE;
 

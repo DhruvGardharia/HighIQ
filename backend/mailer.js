@@ -1,7 +1,10 @@
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  family: 4, // Force IPv4
   auth: {
     user: process.env.MAIL_USER,
     pass: process.env.MAIL_PASS
@@ -12,6 +15,10 @@ const transporter = nodemailer.createTransport({
  * Send notification to p1 when p2 comes online
  */
 async function notifyP1Online() {
+  console.log("[MAILER] Attempting to send notification...");
+  console.log("[MAILER] From:", process.env.MAIL_USER);
+  console.log("[MAILER] To:", process.env.MAIL_TO);
+  
   const mailOptions = {
     from: process.env.MAIL_USER,
     to: process.env.MAIL_TO,
@@ -21,9 +28,11 @@ async function notifyP1Online() {
 
   try {
     await transporter.sendMail(mailOptions);
+    console.log("[MAILER] Email sent successfully");
     return true;
   } catch (err) {
     console.error("[MAILER] Failed to send notification:", err.message);
+    console.error("[MAILER] Full error:", err);
     return false;
   }
 }

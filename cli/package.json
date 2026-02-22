@@ -7,6 +7,7 @@
     "tool": "./tool.js"
   },
   "dependencies": {
-    "axios": "^1.6.2"
+    "axios": "^1.6.2",
+    "dotenv": "^16.6.1"
   }
 }

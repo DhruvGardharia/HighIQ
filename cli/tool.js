@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
+require("dotenv").config();
 const axios = require("axios");
 const readline = require("readline");
 
 /*
   CONFIG
 */
-const BASE_URL = process.env.TOOL_URL || "http://localhost:3000";
+const BASE_URL = process.env.TOOL_URL ;
 const command = process.argv[2];
 const ROLE = process.argv[3] || process.env.ROLE;
 
@@ -65,6 +66,7 @@ async function startSession() {
     try {
       // EXIT
       if (input === "exit") {
+        await axios.post(`${BASE_URL}/leave`, { role: ROLE });
         rl.close();
         return;
       }

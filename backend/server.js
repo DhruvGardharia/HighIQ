@@ -135,6 +135,30 @@ app.get("/dump", (req, res) => {
 });
 
 /*
+  LEAVE SESSION
+*/
+app.post("/leave", (req, res) => {
+  const { role } = req.body;
+
+  if (!["p1", "p2"].includes(role)) {
+    return res.status(400).json({ error: "Invalid role" });
+  }
+
+  if (session.active) {
+    session.users[role] = false;
+
+    // reset session if both users left
+    if (!session.users.p1 && !session.users.p2) {
+      session.active = false;
+      session.messages = [];
+      session.readIndex = { p1: 0, p2: 0 };
+    }
+  }
+
+  res.json({ left: true });
+});
+
+/*
   START SERVER
 */
 app.listen(PORT, () => {

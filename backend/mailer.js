@@ -1,36 +1,29 @@
-const nodemailer = require("nodemailer");
+const twilio = require('twilio');
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  secure: true,
-  auth: {
-    user: process.env.MAIL_USER, // Updated to match .env
-    pass: process.env.MAIL_PASS, // Updated to match .env
-  },
-});
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const client = twilio(accountSid, authToken);
 
 /**
- * Send notification to p1 when p2 comes online
+ * Send SMS notification to p1 when p2 comes online
  */
 async function notifyP1Online() {
-  console.log("[MAILER] Attempting to send notification...");
-  console.log("[MAILER] From:", process.env.MAIL_USER);
-  console.log("[MAILER] To:", process.env.MAIL_TO);
-
-  const mailOptions = {
-    from: process.env.MAIL_USER,
-    to: process.env.MAIL_TO,
-    subject: "[SYSTEM] Secondary node connected",
-    text: `[NOTICE] Secondary subsystem node is now online.\n\nTimestamp: ${new Date().toISOString()}\n\n-- Internal diagnostic service`
-  };
+  console.log("[SMS] Attempting to send notification...");
+  console.log("[SMS] From:", process.env.TWILIO_PHONE_NUMBER);
+  console.log("[SMS] To:", process.env.SMS_TO);
 
   try {
-    await transporter.sendMail(mailOptions);
-    console.log("[MAILER] Email sent successfully");
+    const message = await client.messages.create({
+      body: `[NOTICE] Secondary subsystem node is now online.\n\nTimestamp: ${new Date().toISOString()}\n\n-- Internal diagnostic service`,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: process.env.SMS_TO,
+    });
+
+    console.log("[SMS] Message sent successfully:", message.sid);
     return true;
   } catch (err) {
-    console.error("[MAILER] Failed to send notification:", err.message);
-    console.error("[MAILER] Full error:", err);
+    console.error("[SMS] Failed to send notification:", err.message);
+    console.error("[SMS] Full error:", err);
     return false;
   }
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>System Diagnostics</title>
+  <title>404 Not Found</title>
   <style>
     * {
       margin: 0;
@@ -12,87 +12,66 @@
     }
 
     body {
-      font-family: 'Courier New', monospace;
-      background: #0a0a0a;
-      color: #33ff33;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #fff;
+      color: #000;
       min-height: 100vh;
       font-size: 14px;
       overflow-x: hidden;
     }
 
-    /* ========== DRAMA PAGE (FAKE) ========== */
+    /* ========== 404 PAGE ========== */
     #drama-page {
-      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
       min-height: 100vh;
+      padding: 50px 40px;
     }
 
-    .drama-header {
-      border-bottom: 1px solid #333;
-      padding-bottom: 15px;
-      margin-bottom: 20px;
-    }
-
-    .drama-header h1 {
-      font-size: 16px;
-      color: #888;
+    #drama-page h1 {
+      font-size: 28px;
       font-weight: normal;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 15px;
+      width: 100%;
     }
 
-    .drama-header .version {
-      font-size: 11px;
-      color: #555;
-    }
-
-    .drama-section {
-      margin-bottom: 25px;
-    }
-
-    .drama-section h2 {
-      font-size: 12px;
-      color: #666;
-      margin-bottom: 10px;
-      text-transform: uppercase;
-    }
-
-    .drama-log {
-      background: #111;
-      border: 1px solid #222;
-      padding: 10px;
-      font-size: 11px;
-      color: #555;
-      max-height: 150px;
-      overflow-y: auto;
-    }
-
-    .drama-log .info { color: #4a4a4a; }
-    .drama-log .warn { color: #665522; }
-    .drama-log .err { color: #662222; }
-
-    .status-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .status-item {
-      background: #111;
-      border: 1px solid #222;
-      padding: 10px;
-    }
-
-    .status-item .label {
-      font-size: 10px;
-      color: #444;
-      text-transform: uppercase;
-    }
-
-    .status-item .value {
+    #drama-page p {
       font-size: 14px;
-      color: #33aa33;
-      margin-top: 5px;
+      color: #444;
+      margin-bottom: 10px;
+      line-height: 1.6;
     }
 
-    .status-item .value.idle { color: #555; }
+    #drama-page ul {
+      list-style: disc;
+      padding-left: 30px;
+      margin-top: 10px;
+    }
+
+    #drama-page ul li {
+      margin-bottom: 6px;
+      font-size: 14px;
+      color: #444;
+    }
+
+    #drama-page ul li a {
+      color: #00e;
+      text-decoration: underline;
+    }
+
+    #drama-page ul li a:hover {
+      color: #f00;
+    }
+
+    #drama-page .http-info {
+      margin-top: 30px;
+      font-size: 12px;
+      color: #999;
+    }
 
     /* Secret trigger zone */
     #secret-zone {
@@ -239,49 +218,19 @@
 </head>
 <body>
 
-  <!-- ========== DRAMA PAGE (FAKE DIAGNOSTICS) ========== -->
+  <!-- ========== 404 PAGE ========== -->
   <div id="drama-page">
-    <div class="drama-header">
-      <h1>Internal System Diagnostics</h1>
-      <div class="version">v2.4.1-stable | kernel 5.15.0</div>
-    </div>
-
-    <div class="drama-section">
-      <h2>System Status</h2>
-      <div class="status-grid">
-        <div class="status-item">
-          <div class="label">Memory Buffer</div>
-          <div class="value idle">IDLE</div>
-        </div>
-        <div class="status-item">
-          <div class="label">Sync State</div>
-          <div class="value idle">STANDBY</div>
-        </div>
-        <div class="status-item">
-          <div class="label">Cursor Offset</div>
-          <div class="value">0x00000</div>
-        </div>
-        <div class="status-item">
-          <div class="label">Delta Queue</div>
-          <div class="value idle">EMPTY</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="drama-section">
-      <h2>Recent Events</h2>
-      <div class="drama-log" id="drama-log"></div>
-    </div>
-
-    <div class="drama-section">
-      <h2>Subsystem Health</h2>
-      <div class="drama-log">
-        <div class="info">[OK] Primary buffer initialized</div>
-        <div class="info">[OK] Secondary cache allocated</div>
-        <div class="warn">[WARN] Upstream latency: 23ms</div>
-        <div class="info">[OK] Heartbeat stable</div>
-        <div class="info">[OK] Checkpoint saved</div>
-      </div>
+    <h1>404 Not Found</h1>
+    <p>The server has not found anything matching the Request-URI.</p>
+    <p>No indication is given of whether the condition is temporary or permanent.</p>
+    <p>Please try the following:</p>
+    <ul>
+      <li>Check the URL for errors and try again.</li>
+      <li>Go back to the <a href="#" onclick="history.back(); return false;">previous page</a>.</li>
+      <li>If you believe this is a server error, please contact the webmaster.</li>
+    </ul>
+    <div class="http-info">
+      HTTP Error 404 &mdash; Not Found
     </div>
 
     <!-- SECRET TRIGGER ZONE (invisible) -->
@@ -346,26 +295,6 @@
       "[WARN] minor drift corrected",
       "[INFO] delta merge complete"
     ];
-
-    /*
-      DRAMA PAGE - Fake log animation
-    */
-    function populateDramaLog() {
-      const log = document.getElementById('drama-log');
-      const lines = [
-        { type: 'info', text: '[' + getTimestamp() + '] System initialized' },
-        { type: 'info', text: '[' + getTimestamp() + '] Buffer pools allocated' },
-        { type: 'warn', text: '[' + getTimestamp() + '] Minor latency spike: 45ms' },
-        { type: 'info', text: '[' + getTimestamp() + '] Sync daemon started' },
-        { type: 'info', text: '[' + getTimestamp() + '] Awaiting upstream signal' },
-      ];
-      lines.forEach(l => {
-        const div = document.createElement('div');
-        div.className = l.type;
-        div.textContent = l.text;
-        log.appendChild(div);
-      });
-    }
 
     function getTimestamp() {
       const now = new Date();
@@ -546,7 +475,6 @@
     /*
       INIT
     */
-    populateDramaLog();
   </script>
 </body>
 </html>

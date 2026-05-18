@@ -106,6 +106,30 @@ app.post("/push", (req, res) => {
 });
 
 /*
+  NOTIFY — SEND CONNECT NOTIFICATION (P2 ONLY)
+*/
+app.post("/notify", (req, res) => {
+  const { role } = req.body;
+
+  if (!session.active) {
+    return res.status(400).json({ error: "No active session" });
+  }
+
+  // Only P2 can trigger notification
+  if (role === "p2") {
+    notifyP1Online();
+    return res.json({ notified: true, message: "P1 notified" });
+  }
+
+  // P1 does nothing
+  if (role === "p1") {
+    return res.json({ notified: false, message: "P1 takes no action" });
+  }
+
+  res.status(400).json({ error: "Invalid role" });
+});
+
+/*
   TAIL — ONLY UNREAD (PER USER)
 */
 app.get("/tail", (req, res) => {
@@ -135,28 +159,27 @@ app.get("/dump", (req, res) => {
 });
 
 /*
-  LEAVE SESSION
+  DESTROY — CLEAR ALL MESSAGES (KEEP SESSION ACTIVE)
 */
-app.post("/leave", (req, res) => {
+app.post("/destroy", (req, res) => {
   const { role } = req.body;
+
+  if (!session.active) {
+    return res.status(400).json({ error: "No active session" });
+  }
 
   if (!["p1", "p2"].includes(role)) {
     return res.status(400).json({ error: "Invalid role" });
   }
 
-  if (session.active) {
-    session.users[role] = false;
+  // Clear messages but keep session active
+  session.messages = [];
+  session.readIndex = { p1: 0, p2: 0 };
 
-    // reset session if both users left
-    if (!session.users.p1 && !session.users.p2) {
-      session.active = false;
-      session.messages = [];
-      session.readIndex = { p1: 0, p2: 0 };
-    }
-  }
-
-  res.json({ left: true });
+  res.json({ destroyed: true, message: "Destroyed", session_active: session.active });
 });
+
+
 
 /*
   START SERVER

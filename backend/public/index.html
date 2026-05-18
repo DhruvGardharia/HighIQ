@@ -253,13 +253,14 @@
     <!-- Terminal -->
     <div id="terminal">
       <div id="terminal-header">
-        Subsystem active | Node: <span id="node-id">--</span> | Commands: tail, dump, state, exit
+        Subsystem active | Node: <span id="node-id">--</span> | Commands: tail, dump, state, connect, destroy
       </div>
       <div id="cmd-buttons">
         <button class="cmd-btn" onclick="runCommand('tail')">tail</button>
         <button class="cmd-btn" onclick="runCommand('dump')">dump</button>
         <button class="cmd-btn" onclick="runCommand('state')">state</button>
-        <button class="cmd-btn" onclick="runCommand('exit')" style="border-color:#662222;color:#aa3333;">flush</button>
+        <button class="cmd-btn" onclick="runCommand('connect')">connect</button>
+        <button class="cmd-btn" onclick="runCommand('destroy')" style="border-color:#662222;color:#aa3333;">destroy</button>
       </div>
       <div id="terminal-output"></div>
       <div id="terminal-input-area">
@@ -386,15 +387,6 @@
 
     async function runCommand(cmd) {
       if (cmd === 'exit') {
-        try {
-          await fetch(`${BASE_URL}/leave`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ role: ROLE })
-          });
-        } catch (e) {
-          // silent
-        }
         document.getElementById('terminal').style.display = 'none';
         document.getElementById('role-select').style.display = 'flex';
         ROLE = null;
@@ -443,6 +435,40 @@
         }
         return;
       }
+
+      if (cmd === 'connect') {
+        try {
+          const res = await fetch(`${BASE_URL}/notify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: ROLE })
+          });
+          const data = await res.json();
+          drama();
+          printLine('  ' + data.message, 'system');
+        } catch (e) {
+          drama();
+          printLine('  [ERR] fetch failed', 'warn');
+        }
+        return;
+      }
+
+      if (cmd === 'destroy') {
+        try {
+          const res = await fetch(`${BASE_URL}/destroy`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: ROLE })
+          });
+          const data = await res.json();
+          drama();
+          printLine('  ' + data.message, 'system');
+        } catch (e) {
+          drama();
+          printLine('  [ERR] fetch failed', 'warn');
+        }
+        return;
+      }
     }
 
     async function sendMessage(text) {
@@ -467,7 +493,7 @@
 
         if (!val) return;
 
-        if (['tail', 'dump', 'state', 'exit'].includes(val)) {
+        if (['tail', 'dump', 'state', 'exit', 'connect', 'destroy'].includes(val)) {
           await runCommand(val);
         } else {
           await sendMessage(val);

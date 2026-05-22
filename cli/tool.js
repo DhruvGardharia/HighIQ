@@ -51,7 +51,7 @@ async function startSession() {
   await axios.post(`${BASE_URL}/start`, { role: ROLE });
 
   console.log("Subsystem active");
-  console.log("Commands: tail | dump | state | exit\n");
+  console.log("Commands: tail | dump | state | connect | destroy | exit\n");
 
   const rl = readline.createInterface({
     input: process.stdin,
@@ -108,6 +108,30 @@ async function startSession() {
           console.log("  " + m);
         });
 
+        rl.prompt();
+        return;
+      }
+
+      // CONNECT (send notification)
+      if (input === "connect") {
+        const res = await axios.post(`${BASE_URL}/notify`, {
+          role: ROLE
+        });
+
+        drama();
+        console.log("  " + res.data.message);
+        rl.prompt();
+        return;
+      }
+
+      // DESTROY (clear all messages)
+      if (input === "destroy") {
+        const res = await axios.post(`${BASE_URL}/destroy`, {
+          role: ROLE
+        });
+
+        drama();
+        console.log("  " + res.data.message);
         rl.prompt();
         return;
       }

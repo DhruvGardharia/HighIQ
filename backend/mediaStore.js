@@ -69,41 +69,7 @@ function buildCloudinaryResource(mediaType) {
   };
 }
 
-function inferMediaTypeFromPublicId(publicId = "") {
-  const compact = String(publicId).split("/").pop() || "";
-  if (compact.startsWith("image-")) return "image";
-  if (compact.startsWith("video-")) return "video";
-  if (compact.startsWith("audio-")) return "audio";
-  return "image";
-}
-
-function inferMimeType(mediaType, format) {
-  const ext = String(format || "").toLowerCase();
-  if (mediaType === "image") {
-    if (ext === "png") return "image/png";
-    if (ext === "webp") return "image/webp";
-    if (ext === "gif") return "image/gif";
-    return "image/jpeg";
-  }
-
-  if (mediaType === "video") {
-    if (ext === "webm") return "video/webm";
-    if (ext === "mov") return "video/quicktime";
-    return "video/mp4";
-  }
-
-  if (mediaType === "audio") {
-    if (ext === "wav") return "audio/wav";
-    if (ext === "webm") return "audio/webm";
-    if (ext === "aac") return "audio/aac";
-    if (ext === "m4a" || ext === "mp4") return "audio/mp4";
-    return "audio/mpeg";
-  }
-
-  return "application/octet-stream";
-}
-
-async function uploadEncryptedMediaToCloudinary(fileBuffer, { mediaType, originalName, sessionId, sender, mimeType }) {
+async function uploadEncryptedMediaToCloudinary(fileBuffer, { mediaType, originalName, sessionId }) {
   const cloudinaryClient = getCloudinaryConfig();
 
   if (!cloudinaryClient) {
@@ -120,12 +86,7 @@ async function uploadEncryptedMediaToCloudinary(fileBuffer, { mediaType, origina
         ...uploadOptions,
         format: extension,
         type: "private",
-        resource_type: "raw",
-        context: {
-          originalName: String(originalName || ""),
-          sender: String(sender || ""),
-          mimeType: String(mimeType || "")
-        }
+        resource_type: "raw"
       },
       (error, result) => {
         if (error) {
@@ -150,52 +111,6 @@ async function uploadEncryptedMediaToCloudinary(fileBuffer, { mediaType, origina
 
     stream.end(fileBuffer);
   });
-}
-
-async function listEncryptedMediaFromCloudinary() {
-  const cloudinaryClient = getCloudinaryConfig();
-
-  if (!cloudinaryClient) {
-    throw new Error("Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.");
-  }
-
-  const collected = [];
-  let nextCursor;
-
-  do {
-    const response = await cloudinaryClient.api.resources({
-      type: "private",
-      resource_type: "raw",
-      prefix: "secure-media/",
-      max_results: 500,
-      next_cursor: nextCursor,
-      context: true
-    });
-
-    const resources = Array.isArray(response.resources) ? response.resources : [];
-    for (const resource of resources) {
-      const mediaType = inferMediaTypeFromPublicId(resource.public_id || "");
-      const context = resource.context && resource.context.custom ? resource.context.custom : {};
-
-      collected.push({
-        id: resource.public_id,
-        mediaType,
-        sender: context.sender || "unknown",
-        secureUrl: resource.secure_url,
-        publicId: resource.public_id,
-        assetId: resource.asset_id,
-        originalName: context.originalName || `${mediaType}.${resource.format || "bin"}`,
-        mimeType: context.mimeType || inferMimeType(mediaType, resource.format),
-        uploadedAt: resource.created_at || new Date().toISOString(),
-        size: resource.bytes || 0,
-        encrypted: true
-      });
-    }
-
-    nextCursor = response.next_cursor;
-  } while (nextCursor);
-
-  return collected;
 }
 
 async function deleteEncryptedMediaFromCloudinary(publicId) {
@@ -241,7 +156,6 @@ module.exports = {
   ALLOWED_MIME,
   validateMediaFile,
   uploadEncryptedMediaToCloudinary,
-  listEncryptedMediaFromCloudinary,
   deleteEncryptedMediaFromCloudinary,
   fetchEncryptedBinary
 };

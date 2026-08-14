@@ -44,6 +44,21 @@ function drama(min = 8, max = 12) {
   }
 }
 
+function formatMessageLine(message) {
+  if (typeof message === "string") return message;
+  if (!message || typeof message !== "object") return String(message ?? "");
+
+  if (message.type === "media") {
+    return `[MEDIA] ${message.sender || "unknown"} shared ${message.mediaType || "file"}: ${message.originalName || "unnamed"}`;
+  }
+
+  if (message.type === "text") {
+    return `${message.sender || "unknown"}: ${message.text || ""}`;
+  }
+
+  return JSON.stringify(message);
+}
+
 /*
   SESSION MODE
 */
@@ -90,7 +105,7 @@ async function startSession() {
 
         if (res.data.messages.length > 0) {
           res.data.messages.forEach(m => {
-            console.log("  " + m);
+            console.log("  " + formatMessageLine(m));
           });
         }
 
@@ -105,7 +120,7 @@ async function startSession() {
         drama(10, 15);
 
         res.data.messages.forEach(m => {
-          console.log("  " + m);
+          console.log("  " + formatMessageLine(m));
         });
 
         rl.prompt();

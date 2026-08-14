@@ -4,7 +4,13 @@ const path = require("path");
 const multer = require("multer");
 const { randomBytes } = require("crypto");
 const { notifyP1Online } = require("./mailer");
-const { validateMediaFile, uploadEncryptedMediaToCloudinary, deleteEncryptedMediaFromCloudinary } = require("./mediaStore");
+const { 
+  validateMediaFile, 
+  uploadEncryptedMediaToCloudinary, 
+  deleteEncryptedMediaFromCloudinary,
+  fetchCloudinaryMediaList,
+  findCloudinaryMediaById
+} = require("./mediaStore");
 
 const app = express();
 app.use(express.json({ limit: "50mb" }));
@@ -232,20 +238,26 @@ app.get("/media/session-info", (req, res) => {
   });
 });
 
-app.get("/media/list", (req, res) => {
-  if (!session.active) {
-    return res.json({ items: [] });
-  }
+app.get("/media/list", async (req, res) => {
+  try {
+    const cloudinaryItems = await fetchCloudinaryMediaList();
 
-  res.json({ items: Object.values(session.media) });
+    // Cache in session.media for quick lookup
+    cloudinaryItems.forEach(item => {
+      if (item.id) session.media[item.id] = item;
+      if (item.assetId) session.media[item.assetId] = item;
+      if (item.publicId) session.media[item.publicId] = item;
+    });
+
+    res.json({ items: cloudinaryItems });
+  } catch (error) {
+    console.error("Media list error:", error);
+    res.json({ items: Object.values(session.media) });
+  }
 });
 
 app.post("/media/upload", upload.single("file"), async (req, res) => {
   try {
-    if (!session.active) {
-      return res.status(400).json({ error: "No active session" });
-    }
-
     const { mediaType, sender, sessionId, originalName, mimeType } = req.body;
     const file = req.file;
 
@@ -270,31 +282,36 @@ app.post("/media/upload", upload.single("file"), async (req, res) => {
     const asset = await uploadEncryptedMediaToCloudinary(file.buffer, {
       mediaType,
       originalName: originalName || file.originalname,
-      sessionId: sessionId || mediaId
+      sessionId: sessionId || mediaId,
+      sender,
+      mimeType: mimeType || file.mimetype,
+      mediaId
     });
 
     const mediaRecord = {
-      id: mediaId,
+      id: asset.id || mediaId,
       mediaType,
       sender,
       secureUrl: asset.secure_url,
       publicId: asset.public_id,
       assetId: asset.asset_id,
-      originalName: originalName || file.originalname,
-      mimeType: mimeType || file.mimetype || "application/octet-stream",
-      uploadedAt: new Date().toISOString(),
+      originalName: asset.originalName || originalName || file.originalname,
+      mimeType: asset.mimeType || mimeType || file.mimetype || "application/octet-stream",
+      uploadedAt: asset.uploadedAt || new Date().toISOString(),
       size: file.size,
       encrypted: true
     };
 
-    session.media[mediaId] = mediaRecord;
+    session.media[mediaRecord.id] = mediaRecord;
+    if (mediaRecord.assetId) session.media[mediaRecord.assetId] = mediaRecord;
+    if (mediaRecord.publicId) session.media[mediaRecord.publicId] = mediaRecord;
 
     const messageEntry = {
       type: "media",
       mediaType,
-      mediaId,
+      mediaId: mediaRecord.id,
       sender,
-      createdAt: new Date().toISOString(),
+      createdAt: mediaRecord.uploadedAt,
       originalName: mediaRecord.originalName,
       mimeType: mediaRecord.mimeType
     };
@@ -309,12 +326,12 @@ app.post("/media/upload", upload.single("file"), async (req, res) => {
 });
 
 app.delete("/media/:mediaId", async (req, res) => {
-  if (!session.active) {
-    return res.status(400).json({ error: "No active session" });
-  }
-
   const mediaId = req.params.mediaId;
-  const media = session.media[mediaId];
+  let media = session.media[mediaId];
+
+  if (!media) {
+    media = await findCloudinaryMediaById(mediaId);
+  }
 
   if (!media) {
     return res.status(404).json({ error: "Media not found." });
@@ -327,13 +344,28 @@ app.delete("/media/:mediaId", async (req, res) => {
   }
 
   delete session.media[mediaId];
-  session.messages = session.messages.filter(m => !(m && m.type === "media" && m.mediaId === mediaId));
+  if (media.id) delete session.media[media.id];
+  if (media.assetId) delete session.media[media.assetId];
+  if (media.publicId) delete session.media[media.publicId];
+
+  session.messages = session.messages.filter(m => !(m && m.type === "media" && (m.mediaId === mediaId || m.mediaId === media.id)));
 
   res.json({ success: true, mediaId });
 });
 
 app.get("/media/:mediaId", async (req, res) => {
-  const media = session.media[req.params.mediaId];
+  const mediaId = req.params.mediaId;
+  let media = session.media[mediaId];
+
+  if (!media) {
+    media = await findCloudinaryMediaById(mediaId);
+    if (media) {
+      if (media.id) session.media[media.id] = media;
+      if (media.assetId) session.media[media.assetId] = media;
+      if (media.publicId) session.media[media.publicId] = media;
+    }
+  }
+
   if (!media) {
     return res.status(404).json({ error: "Media not found." });
   }

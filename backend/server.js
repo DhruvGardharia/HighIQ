@@ -4,7 +4,12 @@ const path = require("path");
 const multer = require("multer");
 const { randomBytes } = require("crypto");
 const { notifyP1Online } = require("./mailer");
-const { validateMediaFile, uploadEncryptedMediaToCloudinary, deleteEncryptedMediaFromCloudinary } = require("./mediaStore");
+const {
+  validateMediaFile,
+  uploadEncryptedMediaToCloudinary,
+  listEncryptedMediaFromCloudinary,
+  deleteEncryptedMediaFromCloudinary
+} = require("./mediaStore");
 
 const app = express();
 app.use(express.json({ limit: "50mb" }));
@@ -61,8 +66,22 @@ function resetSessionState() {
   session.users = { p1: false, p2: false };
   session.messages = [];
   session.readIndex = { p1: 0, p2: 0 };
-  session.media = {};
+  // Keep media map so encrypted media can persist across session resets.
+  session.media = session.media || {};
   session.sessionSalt = randomBytes(16).toString("hex");
+}
+
+async function hydrateMediaFromCloudinary() {
+  try {
+    const cloudMedia = await listEncryptedMediaFromCloudinary();
+    const reconstructed = {};
+    for (const item of cloudMedia) {
+      reconstructed[item.id] = item;
+    }
+    session.media = reconstructed;
+  } catch (error) {
+    console.warn("Media hydrate skipped:", error.message);
+  }
 }
 
 /*
@@ -102,9 +121,11 @@ app.post("/start", (req, res) => {
 
   session.users[role] = true;
 
-  res.json({
-    message: "Session started / joined",
-    users: session.users
+  hydrateMediaFromCloudinary().finally(() => {
+    res.json({
+      message: "Session started / joined",
+      users: session.users
+    });
   });
 });
 
@@ -237,6 +258,13 @@ app.get("/media/list", (req, res) => {
     return res.json({ items: [] });
   }
 
+  if (!session.media || Object.keys(session.media).length === 0) {
+    hydrateMediaFromCloudinary().finally(() => {
+      res.json({ items: Object.values(session.media || {}) });
+    });
+    return;
+  }
+
   res.json({ items: Object.values(session.media) });
 });
 
@@ -266,12 +294,15 @@ app.post("/media/upload", upload.single("file"), async (req, res) => {
       return res.status(400).json({ error: `${mediaType} exceeds the ${Math.round(maxSize / (1024 * 1024))}MB limit.` });
     }
 
-    const mediaId = `media_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
     const asset = await uploadEncryptedMediaToCloudinary(file.buffer, {
       mediaType,
       originalName: originalName || file.originalname,
-      sessionId: sessionId || mediaId
+      sessionId: sessionId || "session",
+      sender,
+      mimeType: mimeType || file.mimetype || "application/octet-stream"
     });
+
+    const mediaId = asset.public_id;
 
     const mediaRecord = {
       id: mediaId,
@@ -314,7 +345,12 @@ app.delete("/media/:mediaId", async (req, res) => {
   }
 
   const mediaId = req.params.mediaId;
-  const media = session.media[mediaId];
+  let media = session.media[mediaId];
+
+  if (!media) {
+    await hydrateMediaFromCloudinary();
+    media = session.media[mediaId];
+  }
 
   if (!media) {
     return res.status(404).json({ error: "Media not found." });
@@ -333,7 +369,13 @@ app.delete("/media/:mediaId", async (req, res) => {
 });
 
 app.get("/media/:mediaId", async (req, res) => {
-  const media = session.media[req.params.mediaId];
+  let media = session.media[req.params.mediaId];
+
+  if (!media) {
+    await hydrateMediaFromCloudinary();
+    media = session.media[req.params.mediaId];
+  }
+
   if (!media) {
     return res.status(404).json({ error: "Media not found." });
   }

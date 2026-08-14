@@ -12,8 +12,10 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "cloudinary": "^2.10.0",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "multer": "^2.2.0",
     "nodemailer": "^8.0.1",
     "resend": "^6.9.2",
     "twilio": "^5.12.2"

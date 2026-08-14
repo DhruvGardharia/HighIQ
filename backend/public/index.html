@@ -943,6 +943,33 @@
       return new Blob([decrypted]);
     }
 
+    async function loadImageThumbnail(item, imgElement) {
+      const cacheKey = `thumb:${item.id}`;
+      if (MEDIA_SESSION.mediaCache[cacheKey]) {
+        imgElement.src = MEDIA_SESSION.mediaCache[cacheKey];
+        return;
+      }
+
+      const passphrase = getMediaKey('image');
+      if (!passphrase) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`${BASE_URL}/media/${item.id}`);
+        if (!res.ok) return;
+
+        const encryptedBlob = await res.blob();
+        const decryptedBlobRaw = await decryptEncryptedBlob(encryptedBlob, passphrase);
+        const decryptedBlob = new Blob([decryptedBlobRaw], { type: item.mimeType || 'image/jpeg' });
+        const objectUrl = URL.createObjectURL(decryptedBlob);
+        MEDIA_SESSION.mediaCache[cacheKey] = objectUrl;
+        imgElement.src = objectUrl;
+      } catch (error) {
+        // Keep placeholder if thumbnail decryption fails
+      }
+    }
+
     function setMediaStatus(message) {
       const out = document.getElementById('media-message');
       out.textContent = message;
@@ -962,6 +989,13 @@
         if (!res.ok) {
           throw new Error(data.error || 'Delete failed.');
         }
+
+        const cacheKey = `thumb:${item.id}`;
+        const cachedUrl = MEDIA_SESSION.mediaCache[cacheKey];
+        if (cachedUrl && cachedUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(cachedUrl);
+        }
+        delete MEDIA_SESSION.mediaCache[cacheKey];
 
         closeViewer();
         setMediaStatus(`${name} deleted.`);
@@ -1098,6 +1132,7 @@
         wrapper.innerHTML = '<img alt="encrypted image" />';
         const img = wrapper.querySelector('img');
         img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120" fill="%230b0b0b"/><text x="60" y="60" text-anchor="middle" fill="%2333ff33" font-family="monospace" font-size="12">IMG</text></svg>';
+        loadImageThumbnail(item, img);
         wrapper.onclick = () => previewDecryptedMedia(item, 'image');
 
         const delBtn = document.createElement('button');
@@ -1207,6 +1242,15 @@
       document.getElementById('viewer-content').innerHTML = '';
     }
 
+    function clearMediaCache() {
+      Object.values(MEDIA_SESSION.mediaCache).forEach(url => {
+        if (typeof url === 'string' && url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
+      });
+      MEDIA_SESSION.mediaCache = {};
+    }
+
     function startMediaAutoRefresh() {
       stopMediaAutoRefresh();
       MEDIA_SESSION.refreshTimer = setInterval(loadMediaList, 3000);
@@ -1228,6 +1272,7 @@
 
     window.addEventListener('beforeunload', () => {
       stopMediaAutoRefresh();
+      clearMediaCache();
       closeViewer();
     });
 

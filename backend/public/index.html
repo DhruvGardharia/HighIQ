@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>404 Not Found</title>
+  <script src="/socket.io/socket.io.js"></script>
   <style>
     * {
       margin: 0;
@@ -220,6 +221,206 @@
 
     #terminal-output::-webkit-scrollbar-thumb {
       background: #333;
+    }
+
+    /* ========== AUDIO CALL UI ========== */
+    #active-call-hud {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      background: #091a09;
+      border: 1px solid #33ff33;
+      padding: 8px 14px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      box-shadow: 0 0 12px rgba(51, 255, 51, 0.2);
+    }
+
+    .call-hud-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .call-hud-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #33ff33;
+      display: inline-block;
+      box-shadow: 0 0 6px #33ff33;
+      animation: blink-dot 1s infinite alternate;
+    }
+
+    @keyframes blink-dot {
+      0% { opacity: 0.3; transform: scale(0.9); }
+      100% { opacity: 1; transform: scale(1.1); }
+    }
+
+    .call-hud-title {
+      font-weight: bold;
+      color: #33ff33;
+    }
+
+    .call-hud-peer {
+      color: #fff;
+      background: #193819;
+      border: 1px solid #2e662e;
+      padding: 1px 6px;
+      font-size: 11px;
+    }
+
+    .call-hud-status {
+      color: #33ff33;
+      font-weight: bold;
+    }
+
+    .call-hud-timer {
+      color: #00ffcc;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    .call-hud-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .call-hud-btn {
+      background: #111;
+      border: 1px solid #33aa33;
+      color: #33ff33;
+      padding: 5px 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .call-hud-btn:hover {
+      background: #1e3a1e;
+    }
+
+    .call-hud-btn.muted {
+      border-color: #e69500;
+      color: #ffaa00;
+      background: #2b1d05;
+    }
+
+    .call-hud-btn.end-btn {
+      border-color: #882222;
+      color: #ff5555;
+      background: #2b0b0b;
+    }
+
+    .call-hud-btn.end-btn:hover {
+      background: #4a1212;
+      border-color: #cc3333;
+      color: #ff8888;
+    }
+
+    /* Modal Styling */
+    .call-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.88);
+      z-index: 150;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .call-modal-box {
+      width: min(440px, 92vw);
+      background: #0f140f;
+      border: 2px solid #33ff33;
+      box-shadow: 0 0 25px rgba(51, 255, 51, 0.35);
+      padding: 24px;
+      text-align: center;
+      font-family: 'Courier New', monospace;
+      color: #33ff33;
+    }
+
+    .call-modal-header {
+      font-size: 13px;
+      letter-spacing: 1.5px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #1f401f;
+      padding-bottom: 10px;
+      color: #7bc77b;
+    }
+
+    .call-modal-body {
+      margin-bottom: 24px;
+    }
+
+    .call-avatar-pulse {
+      font-size: 42px;
+      margin: 10px 0 16px;
+      display: inline-block;
+      animation: phone-bounce 0.8s infinite alternate ease-in-out;
+    }
+
+    @keyframes phone-bounce {
+      0% { transform: scale(1) rotate(-5deg); filter: drop-shadow(0 0 3px #33ff33); }
+      100% { transform: scale(1.15) rotate(5deg); filter: drop-shadow(0 0 15px #33ff33); }
+    }
+
+    .call-peer-name {
+      font-size: 18px;
+      font-weight: bold;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .call-status-text {
+      font-size: 12px;
+      color: #66cc66;
+    }
+
+    .call-modal-actions {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .call-action-btn {
+      padding: 12px 28px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      border: 1px solid #33ff33;
+      background: #111;
+      color: #33ff33;
+      transition: all 0.2s;
+    }
+
+    .call-action-btn.accept-btn {
+      background: #004400;
+      border-color: #33ff33;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(51, 255, 51, 0.4);
+    }
+
+    .call-action-btn.accept-btn:hover {
+      background: #006600;
+      box-shadow: 0 0 18px rgba(51, 255, 51, 0.7);
+    }
+
+    .call-action-btn.decline-btn {
+      background: #440000;
+      border-color: #ff4444;
+      color: #ff9999;
+    }
+
+    .call-action-btn.decline-btn:hover {
+      background: #660000;
+      border-color: #ff6666;
+      color: #ffffff;
     }
 
     #media-modal {
@@ -491,9 +692,26 @@
         <button class="cmd-btn" onclick="runCommand('dump')">dump</button>
         <button class="cmd-btn" onclick="runCommand('state')">state</button>
         <button class="cmd-btn" onclick="runCommand('connect')">connect</button>
+        <button class="cmd-btn" id="call-cmd-btn" onclick="runCommand('call')" style="display:none;border-color:#2a662a;color:#44ff44;">📞 call</button>
         <button class="cmd-btn" id="media-cmd-btn" onclick="runCommand('media')" style="display:none;">media</button>
         <button class="cmd-btn" onclick="runCommand('destroy')" style="border-color:#662222;color:#aa3333;">destroy</button>
       </div>
+
+      <!-- ACTIVE CALL HUD -->
+      <div id="active-call-hud">
+        <div class="call-hud-left">
+          <span class="call-hud-dot"></span>
+          <span class="call-hud-title">AUDIO LINK:</span>
+          <span id="call-hud-peer" class="call-hud-peer">--</span>
+          <span id="call-hud-status" class="call-hud-status">[CONNECTING...]</span>
+          <span id="call-hud-timer" class="call-hud-timer">00:00</span>
+        </div>
+        <div class="call-hud-right">
+          <button id="call-mute-btn" class="call-hud-btn" onclick="toggleMuteCall()">🎤 Mute</button>
+          <button id="call-end-btn" class="call-hud-btn end-btn" onclick="endActiveCall()">🔴 End Call</button>
+        </div>
+      </div>
+
       <div id="terminal-output"></div>
       <div id="terminal-input-area">
         <span class="prompt">&gt;</span>
@@ -501,6 +719,40 @@
       </div>
     </div>
   </div>
+
+  <!-- INCOMING CALL MODAL -->
+  <div id="incoming-call-modal" class="call-modal">
+    <div class="call-modal-box">
+      <div class="call-modal-header">[ INCOMING AUDIO TRANSMISSION ]</div>
+      <div class="call-modal-body">
+        <div class="call-avatar-pulse">📞</div>
+        <div class="call-peer-name" id="incoming-caller-name">CALLER: --</div>
+        <div class="call-status-text" id="incoming-call-subtext">Secure WebRTC Direct Audio Link</div>
+      </div>
+      <div class="call-modal-actions">
+        <button class="call-action-btn accept-btn" id="btn-accept-call" onclick="acceptIncomingCall()">ACCEPT</button>
+        <button class="call-action-btn decline-btn" id="btn-decline-call" onclick="declineIncomingCall()">DECLINE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OUTGOING CALL MODAL -->
+  <div id="outgoing-call-modal" class="call-modal">
+    <div class="call-modal-box">
+      <div class="call-modal-header">[ OUTGOING AUDIO CALL ]</div>
+      <div class="call-modal-body">
+        <div class="call-avatar-pulse">📡</div>
+        <div class="call-peer-name" id="outgoing-target-name">CALLING PEER...</div>
+        <div class="call-status-text" id="outgoing-call-status">Connecting signaling layer...</div>
+      </div>
+      <div class="call-modal-actions">
+        <button class="call-action-btn decline-btn" onclick="cancelOutgoingCall()">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HIDDEN AUDIO ELEMENT FOR PLAYING REMOTE STREAM -->
+  <audio id="remote-audio" autoplay playsinline style="display:none;"></audio>
 
   <div id="media-modal">
     <div id="media-panel">
@@ -571,6 +823,7 @@
     let ROLE = null;
     let holdTimer = null;
     let mediaUnlocked = false;
+    let callUnlocked = false;
     const HOLD_DURATION = 3000; // 3 seconds
 
     /*
@@ -654,7 +907,9 @@
 
       printLine('[SYSTEM] Subsystem active', 'system');
       drama();
-      syncMediaAccessFromServer();
+      syncAccessFromServer();
+      initSocketSignaling(role);
+      fetchIceConfig();
     }
 
     /*
@@ -701,6 +956,12 @@
       btn.style.display = visible ? 'inline-block' : 'none';
     }
 
+    function setCallButtonVisible(visible) {
+      const btn = document.getElementById('call-cmd-btn');
+      if (!btn) return;
+      btn.style.display = visible ? 'inline-block' : 'none';
+    }
+
     function getMessageText(message) {
       if (typeof message === 'string') return message;
       if (!message || typeof message !== 'object') return '';
@@ -709,23 +970,35 @@
       return '';
     }
 
-    function updateMediaAccessFromMessages(messages) {
-      if (mediaUnlocked) return;
+    function updateAccessFromMessages(messages) {
       if (!Array.isArray(messages)) return;
 
-      const unlocked = messages.some(m => getMessageText(m).trim().toLowerCase() === 'mediaa');
-      if (unlocked) {
-        mediaUnlocked = true;
-        setMediaButtonVisible(true);
-        printLine('  [SYSTEM] media access unlocked', 'system');
+      // Check media unlock
+      if (!mediaUnlocked) {
+        const unlockedMedia = messages.some(m => getMessageText(m).trim().toLowerCase() === 'mediaa');
+        if (unlockedMedia) {
+          mediaUnlocked = true;
+          setMediaButtonVisible(true);
+          printLine('  [SYSTEM] media access unlocked', 'system');
+        }
+      }
+
+      // Check call unlock
+      if (!callUnlocked) {
+        const unlockedCall = messages.some(m => getMessageText(m).trim().toLowerCase() === 'calling');
+        if (unlockedCall) {
+          callUnlocked = true;
+          setCallButtonVisible(true);
+          printLine('  [SYSTEM] call access unlocked', 'system');
+        }
       }
     }
 
-    async function syncMediaAccessFromServer() {
+    async function syncAccessFromServer() {
       try {
         const res = await fetch(`${BASE_URL}/dump`);
         const data = await res.json();
-        updateMediaAccessFromMessages(data.messages || []);
+        updateAccessFromMessages(data.messages || []);
       } catch (e) {
         // silent
       }
@@ -733,10 +1006,20 @@
 
     async function runCommand(cmd) {
       if (cmd === 'exit') {
+        cleanupMediaAndCall();
         document.getElementById('terminal').style.display = 'none';
         document.getElementById('role-select').style.display = 'flex';
         ROLE = null;
         output.innerHTML = '';
+        return;
+      }
+
+      if (cmd === 'call') {
+        if (!callUnlocked) {
+          printLine('  [SYSTEM] call is locked. Send "calling" first.', 'warn');
+          return;
+        }
+        await startAudioCall();
         return;
       }
 
@@ -756,7 +1039,7 @@
         try {
           const res = await fetch(`${BASE_URL}/tail?role=${ROLE}`);
           const data = await res.json();
-          updateMediaAccessFromMessages(data.messages || []);
+          updateAccessFromMessages(data.messages || []);
           drama();
           if (data.messages && data.messages.length > 0) {
             data.messages.forEach(m => printLine('  ' + formatMessageLine(m), 'msg'));
@@ -772,7 +1055,7 @@
         try {
           const res = await fetch(`${BASE_URL}/dump`);
           const data = await res.json();
-          updateMediaAccessFromMessages(data.messages || []);
+          updateAccessFromMessages(data.messages || []);
           drama(10, 15);
           if (data.messages) {
             data.messages.forEach(m => printLine('  ' + formatMessageLine(m), 'msg'));
@@ -838,10 +1121,17 @@
           body: JSON.stringify({ role: ROLE, data: text })
         });
 
-        if (text.trim().toLowerCase() === 'mediaa') {
+        const clean = text.trim().toLowerCase();
+        if (clean === 'mediaa') {
           mediaUnlocked = true;
           setMediaButtonVisible(true);
           printLine('  [SYSTEM] media access unlocked', 'system');
+        }
+
+        if (clean === 'calling') {
+          callUnlocked = true;
+          setCallButtonVisible(true);
+          printLine('  [SYSTEM] call access unlocked', 'system');
         }
 
         drama(6, 10);
@@ -857,7 +1147,7 @@
 
         if (!val) return;
 
-        if (['tail', 'dump', 'state', 'exit', 'connect', 'destroy', 'media'].includes(val)) {
+        if (['tail', 'dump', 'state', 'exit', 'connect', 'destroy', 'media', 'call'].includes(val)) {
           await runCommand(val);
         } else {
           await sendMessage(val);
@@ -1272,14 +1562,547 @@
     };
 
     window.addEventListener('beforeunload', () => {
+      cleanupMediaAndCall();
       stopMediaAutoRefresh();
       clearMediaCache();
       closeViewer();
     });
 
     /*
-      INIT
+      =======================================================
+      WEBRTC DIRECT AUDIO CALL ENGINE & ASYMMETRIC TONE GEN
+      =======================================================
     */
+    const ToneGen = {
+      ctx: null,
+      interval: null,
+
+      init() {
+        if (!this.ctx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) {
+            this.ctx = new AudioContextClass();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+      },
+
+      // LOUD LOOPING RINGTONE: Activated only when P2 calls P1
+      startRingtone() {
+        this.stop();
+        this.init();
+        if (!this.ctx) return;
+
+        const playBurst = () => {
+          if (!this.ctx) return;
+          try {
+            const now = this.ctx.currentTime;
+            const osc1 = this.ctx.createOscillator();
+            const osc2 = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc1.type = 'sine';
+            osc2.type = 'sine';
+            osc1.frequency.setValueAtTime(440, now);
+            osc2.frequency.setValueAtTime(480, now);
+
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.35, now + 0.05);
+            gain.gain.setValueAtTime(0.35, now + 1.2);
+            gain.gain.linearRampToValueAtTime(0, now + 1.25);
+
+            osc1.connect(gain);
+            osc2.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc1.start(now);
+            osc2.start(now);
+            osc1.stop(now + 1.3);
+            osc2.stop(now + 1.3);
+          } catch (e) {
+            // silent catch
+          }
+        };
+
+        playBurst();
+        this.interval = setInterval(playBurst, 3000);
+      },
+
+      // RINGBACK DIAL TONE: Soft dial tone played to caller while waiting
+      startRingbackTone() {
+        this.stop();
+        this.init();
+        if (!this.ctx) return;
+
+        const playBurst = () => {
+          if (!this.ctx) return;
+          try {
+            const now = this.ctx.currentTime;
+            const osc1 = this.ctx.createOscillator();
+            const osc2 = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc1.type = 'sine';
+            osc2.type = 'sine';
+            osc1.frequency.setValueAtTime(440, now);
+            osc2.frequency.setValueAtTime(480, now);
+
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.08, now + 0.05);
+            gain.gain.setValueAtTime(0.08, now + 1.4);
+            gain.gain.linearRampToValueAtTime(0, now + 1.45);
+
+            osc1.connect(gain);
+            osc2.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc1.start(now);
+            osc2.start(now);
+            osc1.stop(now + 1.5);
+            osc2.stop(now + 1.5);
+          } catch (e) {
+            // silent catch
+          }
+        };
+
+        playBurst();
+        this.interval = setInterval(playBurst, 4000);
+      },
+
+      stop() {
+        if (this.interval) {
+          clearInterval(this.interval);
+          this.interval = null;
+        }
+      }
+    };
+
+    /*
+      WebRTC State
+    */
+    let socket = null;
+    let peerConnection = null;
+    let localAudioStream = null;
+    let isCallMuted = false;
+    let callTimerInterval = null;
+    let callDurationSeconds = 0;
+    let pendingCandidates = [];
+    let isInitiator = false;
+    let iceServers = [
+      { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }
+    ];
+
+    async function fetchIceConfig() {
+      try {
+        const res = await fetch(`${BASE_URL}/ice-config`);
+        const data = await res.json();
+        if (data && Array.isArray(data.iceServers) && data.iceServers.length > 0) {
+          iceServers = data.iceServers;
+        }
+      } catch (e) {
+        // Fallback default
+      }
+    }
+
+    function initSocketSignaling(role) {
+      if (typeof io === 'undefined') {
+        console.warn('Socket.IO client library not loaded yet');
+        return;
+      }
+
+      if (socket) {
+        socket.disconnect();
+      }
+
+      socket = io(BASE_URL);
+
+      socket.on('connect', () => {
+        socket.emit('join-session', { role });
+      });
+
+      // INCOMING CALL HANDLER
+      socket.on('incoming-call', (data) => {
+        // Automatically unlock call button when receiving a call
+        callUnlocked = true;
+        setCallButtonVisible(true);
+
+        // ASYMMETRIC RINGTONE BEHAVIOR:
+        // When P2 calls P1 -> data.ringtone is true -> play loud looping ringtone
+        // When P1 calls P2 -> data.ringtone is false -> SILENT, NO ringtone / audio notification
+        if (data.ringtone) {
+          ToneGen.startRingtone();
+          printLine(`  [CALL] INCOMING AUDIO CALL FROM ${data.caller.toUpperCase()}`, 'msg');
+        } else {
+          // Silent in-app notification only
+          printLine(`  [CALL] INCOMING SILENT CALL FROM ${data.caller.toUpperCase()}`, 'warn');
+        }
+
+        document.getElementById('incoming-caller-name').textContent = `CALLER: ${data.caller.toUpperCase()}`;
+        document.getElementById('incoming-call-modal').style.display = 'flex';
+      });
+
+      // CALL RINGING (Caller side acknowledgment)
+      socket.on('call-ringing', () => {
+        document.getElementById('outgoing-call-status').textContent = 'Ringing remote node...';
+        ToneGen.startRingbackTone();
+      });
+
+      // CALL ACCEPTED HANDLER
+      socket.on('call-accepted', async () => {
+        ToneGen.stop();
+        document.getElementById('incoming-call-modal').style.display = 'none';
+        document.getElementById('outgoing-call-modal').style.display = 'none';
+
+        showActiveCallHUD();
+        startCallTimer();
+        printLine('  [CALL] Peer accepted. Connecting secure audio stream...', 'system');
+
+        if (isInitiator) {
+          try {
+            await setupPeerConnection();
+            const offer = await peerConnection.createOffer({
+              offerToReceiveAudio: true,
+              offerToReceiveVideo: false
+            });
+            await peerConnection.setLocalDescription(offer);
+            socket.emit('webrtc-offer', { sdp: offer });
+          } catch (err) {
+            printLine(`  [CALL-ERR] Offer creation failed: ${err.message}`, 'warn');
+            endActiveCall();
+          }
+        }
+      });
+
+      // CALL DECLINED HANDLER
+      socket.on('call-declined', (data) => {
+        ToneGen.stop();
+        cleanupMediaAndCall();
+        printLine(`  [CALL] Call was declined (${data.reason || 'peer declined'})`, 'warn');
+      });
+
+      // CALL UNAVAILABLE HANDLER
+      socket.on('call-unavailable', (data) => {
+        ToneGen.stop();
+        cleanupMediaAndCall();
+        printLine(`  [CALL] Call unavailable: ${data.reason || 'peer offline'}`, 'warn');
+      });
+
+      // CALL ENDED HANDLER
+      socket.on('call-ended', (data) => {
+        ToneGen.stop();
+        cleanupMediaAndCall();
+        printLine(`  [CALL] Audio link terminated (${data.reason || 'session closed'})`, 'system');
+      });
+
+      // WEBRTC SDP OFFER
+      socket.on('webrtc-offer', async (data) => {
+        try {
+          if (!peerConnection) {
+            await setupPeerConnection();
+          }
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+
+          while (pendingCandidates.length > 0) {
+            const cand = pendingCandidates.shift();
+            await peerConnection.addIceCandidate(new RTCIceCandidate(cand));
+          }
+
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+          socket.emit('webrtc-answer', { sdp: answer });
+        } catch (err) {
+          printLine(`  [CALL-ERR] SDP Offer failed: ${err.message}`, 'warn');
+        }
+      });
+
+      // WEBRTC SDP ANSWER
+      socket.on('webrtc-answer', async (data) => {
+        try {
+          if (peerConnection) {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+            while (pendingCandidates.length > 0) {
+              const cand = pendingCandidates.shift();
+              await peerConnection.addIceCandidate(new RTCIceCandidate(cand));
+            }
+          }
+        } catch (err) {
+          printLine(`  [CALL-ERR] SDP Answer failed: ${err.message}`, 'warn');
+        }
+      });
+
+      // ICE CANDIDATES
+      socket.on('ice-candidate', async (data) => {
+        try {
+          if (data.candidate) {
+            if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
+              await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            } else {
+              pendingCandidates.push(data.candidate);
+            }
+          }
+        } catch (err) {
+          // ignore candidate error
+        }
+      });
+    }
+
+    async function setupPeerConnection() {
+      if (peerConnection) {
+        try { peerConnection.close(); } catch(e) {}
+      }
+      pendingCandidates = [];
+
+      peerConnection = new RTCPeerConnection({ iceServers });
+
+      // Add local microphone audio tracks
+      if (localAudioStream) {
+        localAudioStream.getAudioTracks().forEach(track => {
+          peerConnection.addTrack(track, localAudioStream);
+        });
+      }
+
+      // Handle receiving remote audio
+      peerConnection.ontrack = (event) => {
+        const remoteAudio = document.getElementById('remote-audio');
+        if (remoteAudio && event.streams && event.streams[0]) {
+          remoteAudio.srcObject = event.streams[0];
+          remoteAudio.play().catch(() => {});
+        }
+      };
+
+      // Handle ICE candidates
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate && socket) {
+          socket.emit('ice-candidate', { candidate: event.candidate });
+        }
+      };
+
+      // Handle connection state changes
+      peerConnection.onconnectionstatechange = () => {
+        const statusEl = document.getElementById('call-hud-status');
+        if (!statusEl) return;
+
+        if (peerConnection.connectionState === 'connected') {
+          statusEl.textContent = '[CONNECTED]';
+          statusEl.style.color = '#33ff33';
+        } else if (peerConnection.connectionState === 'connecting') {
+          statusEl.textContent = '[CONNECTING...]';
+          statusEl.style.color = '#ffff33';
+        } else if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
+          statusEl.textContent = `[${peerConnection.connectionState.toUpperCase()}]`;
+          statusEl.style.color = '#ff4444';
+        }
+      };
+    }
+
+    // START OUTGOING CALL
+    async function startAudioCall() {
+      if (!ROLE) {
+        printLine('  [SYSTEM] Select node identity first.', 'warn');
+        return;
+      }
+
+      if (!callUnlocked) {
+        printLine('  [SYSTEM] call is locked. Send "calling" first.', 'warn');
+        return;
+      }
+
+      if (peerConnection || localAudioStream) {
+        printLine('  [CALL] Audio call already in progress.', 'warn');
+        return;
+      }
+
+      ToneGen.init();
+      const targetPeer = ROLE === 'p1' ? 'p2' : 'p1';
+      isInitiator = true;
+
+      printLine(`  [CALL] Requesting microphone access...`, 'system');
+
+      try {
+        // AUDIO ONLY. No video or camera permissions.
+        localAudioStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          },
+          video: false
+        });
+        isCallMuted = false;
+      } catch (err) {
+        printLine(`  [CALL-ERR] Microphone access denied: ${err.message}`, 'warn');
+        return;
+      }
+
+      document.getElementById('outgoing-target-name').textContent = `CALLING ${targetPeer.toUpperCase()}...`;
+      document.getElementById('outgoing-call-status').textContent = 'Requesting direct audio link...';
+      document.getElementById('outgoing-call-modal').style.display = 'flex';
+
+      printLine(`  [CALL] Dialing ${targetPeer.toUpperCase()}...`, 'system');
+      if (socket) {
+        socket.emit('call-request', { caller: ROLE });
+      } else {
+        printLine('  [CALL-ERR] Signaling socket not connected.', 'warn');
+        cleanupMediaAndCall();
+      }
+    }
+
+    // ACCEPT INCOMING CALL
+    async function acceptIncomingCall() {
+      ToneGen.stop();
+      document.getElementById('incoming-call-modal').style.display = 'none';
+      isInitiator = false;
+
+      printLine(`  [CALL] Requesting microphone access to accept...`, 'system');
+
+      try {
+        // AUDIO ONLY. No video or camera permissions.
+        localAudioStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          },
+          video: false
+        });
+        isCallMuted = false;
+      } catch (err) {
+        printLine(`  [CALL-ERR] Microphone access denied: ${err.message}`, 'warn');
+        if (socket) {
+          socket.emit('call-response', { accepted: false, reason: 'Microphone permission denied' });
+        }
+        cleanupMediaAndCall();
+        return;
+      }
+
+      await setupPeerConnection();
+      if (socket) {
+        socket.emit('call-response', { accepted: true });
+      }
+      showActiveCallHUD();
+      startCallTimer();
+    }
+
+    // DECLINE INCOMING CALL
+    function declineIncomingCall() {
+      ToneGen.stop();
+      document.getElementById('incoming-call-modal').style.display = 'none';
+      if (socket) {
+        socket.emit('call-response', { accepted: false, reason: 'Declined by peer' });
+      }
+      cleanupMediaAndCall();
+    }
+
+    // CANCEL OUTGOING CALL
+    function cancelOutgoingCall() {
+      ToneGen.stop();
+      document.getElementById('outgoing-call-modal').style.display = 'none';
+      if (socket) {
+        socket.emit('call-end', { reason: 'Caller cancelled' });
+      }
+      cleanupMediaAndCall();
+    }
+
+    // END ACTIVE CALL
+    function endActiveCall() {
+      ToneGen.stop();
+      if (socket) {
+        socket.emit('call-end', { reason: 'User hung up' });
+      }
+      cleanupMediaAndCall();
+      printLine('  [CALL] Call ended by local node.', 'system');
+    }
+
+    // MUTE / UNMUTE TOGGLE
+    function toggleMuteCall() {
+      if (!localAudioStream) return;
+      isCallMuted = !isCallMuted;
+      localAudioStream.getAudioTracks().forEach(track => {
+        track.enabled = !isCallMuted;
+      });
+
+      const btn = document.getElementById('call-mute-btn');
+      if (btn) {
+        btn.textContent = isCallMuted ? '🔇 Unmute' : '🎤 Mute';
+        btn.classList.toggle('muted', isCallMuted);
+      }
+      printLine(`  [CALL] Microphone ${isCallMuted ? 'MUTED' : 'UNMUTED'}`, 'system');
+    }
+
+    // CLEANUP MEDIA STREAM AND CALL STATE
+    function cleanupMediaAndCall() {
+      ToneGen.stop();
+
+      if (callTimerInterval) {
+        clearInterval(callTimerInterval);
+        callTimerInterval = null;
+      }
+      callDurationSeconds = 0;
+
+      // STOP ALL MICROPHONE TRACKS IMMEDIATELY
+      if (localAudioStream) {
+        localAudioStream.getTracks().forEach(track => {
+          track.stop();
+        });
+        localAudioStream = null;
+      }
+
+      // CLOSE PEER CONNECTION
+      if (peerConnection) {
+        try {
+          peerConnection.close();
+        } catch (e) {}
+        peerConnection = null;
+      }
+
+      const remoteAudio = document.getElementById('remote-audio');
+      if (remoteAudio) {
+        remoteAudio.srcObject = null;
+      }
+
+      document.getElementById('incoming-call-modal').style.display = 'none';
+      document.getElementById('outgoing-call-modal').style.display = 'none';
+      document.getElementById('active-call-hud').style.display = 'none';
+
+      const muteBtn = document.getElementById('call-mute-btn');
+      if (muteBtn) {
+        muteBtn.textContent = '🎤 Mute';
+        muteBtn.classList.remove('muted');
+      }
+
+      isCallMuted = false;
+      isInitiator = false;
+      pendingCandidates = [];
+    }
+
+    function showActiveCallHUD() {
+      const peer = ROLE === 'p1' ? 'P2' : 'P1';
+      document.getElementById('call-hud-peer').textContent = peer;
+      document.getElementById('call-hud-status').textContent = '[CONNECTED]';
+      document.getElementById('call-hud-status').style.color = '#33ff33';
+      document.getElementById('active-call-hud').style.display = 'flex';
+    }
+
+    function startCallTimer() {
+      if (callTimerInterval) clearInterval(callTimerInterval);
+      callDurationSeconds = 0;
+      updateCallTimerDisplay();
+      callTimerInterval = setInterval(() => {
+        callDurationSeconds++;
+        updateCallTimerDisplay();
+      }, 1000);
+    }
+
+    function updateCallTimerDisplay() {
+      const mins = String(Math.floor(callDurationSeconds / 60)).padStart(2, '0');
+      const secs = String(callDurationSeconds % 60).padStart(2, '0');
+      const timerEl = document.getElementById('call-hud-timer');
+      if (timerEl) {
+        timerEl.textContent = `${mins}:${secs}`;
+      }
+    }
   </script>
 </body>
 </html>

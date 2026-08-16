@@ -1,8 +1,10 @@
 require("dotenv").config();
+const http = require("http");
 const express = require("express");
 const path = require("path");
 const multer = require("multer");
 const { randomBytes } = require("crypto");
+const { Server } = require("socket.io");
 const { notifyP1Online } = require("./mailer");
 const { 
   validateMediaFile, 
@@ -13,6 +15,11 @@ const {
 } = require("./mediaStore");
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: "*" }
+});
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
@@ -59,7 +66,14 @@ let session = {
     p2: 0
   },
   media: {},
-  sessionSalt: randomBytes(16).toString("hex")
+  sessionSalt: randomBytes(16).toString("hex"),
+  call: {
+    active: false,
+    ringing: false,
+    caller: null,
+    receiver: null,
+    startedAt: null
+  }
 };
 
 function resetSessionState() {
@@ -69,6 +83,13 @@ function resetSessionState() {
   session.readIndex = { p1: 0, p2: 0 };
   session.media = {};
   session.sessionSalt = randomBytes(16).toString("hex");
+  session.call = {
+    active: false,
+    ringing: false,
+    caller: null,
+    receiver: null,
+    startedAt: null
+  };
 }
 
 /*
@@ -84,6 +105,38 @@ app.get("/", (req, res) => {
 const SECRET_PATH = process.env.SECRET_PATH || "console";
 app.get(`/${SECRET_PATH}`, (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+/*
+  ICE / STUN / TURN CONFIGURATION
+*/
+app.get("/ice-config", (req, res) => {
+  const iceServers = [
+    { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }
+  ];
+
+  if (process.env.STUN_SERVER) {
+    const stunUrls = process.env.STUN_SERVER.split(",").map(s => s.trim()).filter(Boolean);
+    if (stunUrls.length > 0) {
+      iceServers.push({ urls: stunUrls });
+    }
+  }
+
+  if (process.env.TURN_SERVER || process.env.TURN_URLS) {
+    const turnUrls = (process.env.TURN_SERVER || process.env.TURN_URLS).split(",").map(s => s.trim()).filter(Boolean);
+    if (turnUrls.length > 0) {
+      const turnConfig = { urls: turnUrls };
+      if (process.env.TURN_USERNAME) {
+        turnConfig.username = process.env.TURN_USERNAME;
+      }
+      if (process.env.TURN_CREDENTIAL || process.env.TURN_PASSWORD) {
+        turnConfig.credential = process.env.TURN_CREDENTIAL || process.env.TURN_PASSWORD;
+      }
+      iceServers.push(turnConfig);
+    }
+  }
+
+  res.json({ iceServers });
 });
 
 /*
@@ -388,8 +441,132 @@ app.get("/media/:mediaId", async (req, res) => {
 });
 
 /*
+  WEBRTC SIGNALING (SOCKET.IO)
+*/
+io.on("connection", (socket) => {
+  let socketRole = null;
+
+  socket.on("join-session", ({ role }) => {
+    if (!["p1", "p2"].includes(role)) {
+      return socket.emit("error-msg", "Invalid role");
+    }
+
+    socketRole = role;
+    socket.join(role);
+    socket.join("session-room");
+
+    if (!session.active) {
+      resetSessionState();
+    }
+    session.users[role] = true;
+
+    socket.emit("session-joined", {
+      role,
+      activeCall: session.call && (session.call.active || session.call.ringing) ? session.call : null
+    });
+  });
+
+  socket.on("call-request", ({ caller }) => {
+    const role = caller || socketRole;
+    if (!["p1", "p2"].includes(role)) {
+      return socket.emit("call-unavailable", { reason: "Invalid caller identity." });
+    }
+
+    const peerRole = role === "p1" ? "p2" : "p1";
+    const peerSockets = io.sockets.adapter.rooms.get(peerRole);
+
+    if (!peerSockets || peerSockets.size === 0) {
+      return socket.emit("call-unavailable", { reason: `${peerRole.toUpperCase()} is not online.` });
+    }
+
+    if (session.call && (session.call.active || session.call.ringing)) {
+      return socket.emit("call-unavailable", { reason: "Subsystem line busy in another call." });
+    }
+
+    session.call = {
+      active: false,
+      ringing: true,
+      caller: role,
+      receiver: peerRole,
+      startedAt: null
+    };
+
+    // Notify caller that call is ringing
+    socket.emit("call-ringing", { target: peerRole });
+
+    // Notify peer with asymmetric ringtone instruction
+    // P2 calling P1 -> P1 gets loud ringtone (ringtone: true)
+    // P1 calling P2 -> P2 gets silent notification only (ringtone: false)
+    io.to(peerRole).emit("incoming-call", {
+      caller: role,
+      ringtone: role === "p2" // Only true when P2 calls P1
+    });
+  });
+
+  socket.on("call-response", ({ accepted, reason }) => {
+    if (!session.call || !session.call.ringing) {
+      return;
+    }
+
+    const callerRole = session.call.caller;
+    const receiverRole = session.call.receiver;
+
+    if (accepted) {
+      session.call.active = true;
+      session.call.ringing = false;
+      session.call.startedAt = Date.now();
+
+      io.to(callerRole).emit("call-accepted", { peer: receiverRole });
+      io.to(receiverRole).emit("call-accepted", { peer: callerRole });
+    } else {
+      session.call = { active: false, ringing: false, caller: null, receiver: null, startedAt: null };
+      io.to(callerRole).emit("call-declined", { reason: reason || "Call declined by peer." });
+      io.to(receiverRole).emit("call-declined", { reason: "Call declined." });
+    }
+  });
+
+  socket.on("webrtc-offer", ({ sdp }) => {
+    if (!socketRole) return;
+    const peerRole = socketRole === "p1" ? "p2" : "p1";
+    io.to(peerRole).emit("webrtc-offer", { sdp, caller: socketRole });
+  });
+
+  socket.on("webrtc-answer", ({ sdp }) => {
+    if (!socketRole) return;
+    const peerRole = socketRole === "p1" ? "p2" : "p1";
+    io.to(peerRole).emit("webrtc-answer", { sdp, responder: socketRole });
+  });
+
+  socket.on("ice-candidate", ({ candidate }) => {
+    if (!socketRole) return;
+    const peerRole = socketRole === "p1" ? "p2" : "p1";
+    io.to(peerRole).emit("ice-candidate", { candidate, sender: socketRole });
+  });
+
+  socket.on("call-end", ({ reason }) => {
+    if (session.call && (session.call.active || session.call.ringing)) {
+      session.call = { active: false, ringing: false, caller: null, receiver: null, startedAt: null };
+      io.to("session-room").emit("call-ended", { reason: reason || "Call ended." });
+    }
+  });
+
+  socket.on("disconnect", () => {
+    if (socketRole) {
+      const remainingSockets = io.sockets.adapter.rooms.get(socketRole);
+      if (!remainingSockets || remainingSockets.size === 0) {
+        if (session.call && (session.call.active || session.call.ringing) && 
+           (session.call.caller === socketRole || session.call.receiver === socketRole)) {
+          session.call = { active: false, ringing: false, caller: null, receiver: null, startedAt: null };
+          io.to("session-room").emit("call-ended", { reason: `${socketRole.toUpperCase()} disconnected.` });
+        }
+      }
+    }
+  });
+});
+
+/*
   START SERVER
 */
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Service idle and running on port ${PORT}`);
 });

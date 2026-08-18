@@ -223,7 +223,7 @@
       background: #333;
     }
 
-    /* ========== AUDIO CALL UI ========== */
+    /* ========== AUDIO CALL HUD ========== */
     #active-call-hud {
       display: none;
       align-items: center;
@@ -321,6 +321,114 @@
       color: #ff8888;
     }
 
+    /* ========== VIDEO CALL FULLSCREEN / MODAL ========== */
+    #active-video-call-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #000;
+      z-index: 140;
+      flex-direction: column;
+      font-family: 'Courier New', monospace;
+    }
+
+    .video-call-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: rgba(10, 15, 10, 0.95);
+      border-bottom: 1px solid #234d23;
+      color: #33ff33;
+      z-index: 10;
+    }
+
+    .video-call-viewport {
+      flex: 1;
+      position: relative;
+      background: #050805;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #remote-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #080808;
+    }
+
+    .local-pip-container {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: min(220px, 35vw);
+      height: min(150px, 25vh);
+      background: #111;
+      border: 2px solid #33ff33;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
+      z-index: 5;
+      overflow: hidden;
+      border-radius: 4px;
+    }
+
+    #local-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* Mirror local video */
+      background: #000;
+    }
+
+    .video-call-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 16px;
+      background: rgba(10, 15, 10, 0.95);
+      border-top: 1px solid #234d23;
+      z-index: 10;
+      flex-wrap: wrap;
+    }
+
+    .video-ctrl-btn {
+      padding: 10px 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      font-weight: bold;
+      border: 1px solid #33aa33;
+      background: #111;
+      color: #33ff33;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .video-ctrl-btn:hover {
+      background: #1e3a1e;
+      border-color: #33ff33;
+    }
+
+    .video-ctrl-btn.muted {
+      border-color: #e69500;
+      color: #ffaa00;
+      background: #2b1d05;
+    }
+
+    .video-ctrl-btn.end-btn {
+      border-color: #cc3333;
+      background: #440000;
+      color: #ff8888;
+      box-shadow: 0 0 10px rgba(255, 50, 50, 0.3);
+    }
+
+    .video-ctrl-btn.end-btn:hover {
+      background: #660000;
+      color: #ffffff;
+    }
+
     /* Modal Styling */
     .call-modal {
       display: none;
@@ -334,7 +442,7 @@
     }
 
     .call-modal-box {
-      width: min(440px, 92vw);
+      width: min(460px, 92vw);
       background: #0f140f;
       border: 2px solid #33ff33;
       box-shadow: 0 0 25px rgba(51, 255, 51, 0.35);
@@ -384,11 +492,12 @@
     .call-modal-actions {
       display: flex;
       justify-content: center;
-      gap: 16px;
+      gap: 14px;
+      flex-wrap: wrap;
     }
 
     .call-action-btn {
-      padding: 12px 28px;
+      padding: 12px 24px;
       font-family: 'Courier New', monospace;
       font-size: 13px;
       font-weight: bold;
@@ -423,6 +532,7 @@
       color: #ffffff;
     }
 
+    /* Media Vault Styles */
     #media-modal {
       position: fixed;
       inset: 0;
@@ -692,12 +802,12 @@
         <button class="cmd-btn" onclick="runCommand('dump')">dump</button>
         <button class="cmd-btn" onclick="runCommand('state')">state</button>
         <button class="cmd-btn" onclick="runCommand('connect')">connect</button>
-        <button class="cmd-btn" id="call-cmd-btn" onclick="runCommand('call')" style="display:none;border-color:#2a662a;color:#44ff44;">📞 call</button>
+        <button class="cmd-btn" id="call-cmd-btn" onclick="openCallTypeSelector()" style="display:none;border-color:#2a662a;color:#44ff44;">📞 call</button>
         <button class="cmd-btn" id="media-cmd-btn" onclick="runCommand('media')" style="display:none;">media</button>
         <button class="cmd-btn" onclick="runCommand('destroy')" style="border-color:#662222;color:#aa3333;">destroy</button>
       </div>
 
-      <!-- ACTIVE CALL HUD -->
+      <!-- ACTIVE AUDIO CALL HUD -->
       <div id="active-call-hud">
         <div class="call-hud-left">
           <span class="call-hud-dot"></span>
@@ -720,12 +830,29 @@
     </div>
   </div>
 
+  <!-- CALL TYPE SELECTOR MODAL -->
+  <div id="call-type-modal" class="call-modal">
+    <div class="call-modal-box">
+      <div class="call-modal-header">[ SELECT TRANSMISSION MODE ]</div>
+      <div class="call-modal-body">
+        <div class="call-avatar-pulse">📡</div>
+        <div class="call-peer-name">INITIATE CALL</div>
+        <div class="call-status-text">Select encrypted real-time communication channel:</div>
+      </div>
+      <div class="call-modal-actions">
+        <button class="call-action-btn accept-btn" onclick="startCall('audio')">📞 AUDIO CALL</button>
+        <button class="call-action-btn accept-btn" style="background:#003344;border-color:#33ccff;color:#99eeff;" onclick="startCall('video')">📹 VIDEO CALL</button>
+        <button class="call-action-btn decline-btn" onclick="closeCallTypeSelector()">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
   <!-- INCOMING CALL MODAL -->
   <div id="incoming-call-modal" class="call-modal">
     <div class="call-modal-box">
-      <div class="call-modal-header">[ INCOMING AUDIO TRANSMISSION ]</div>
+      <div class="call-modal-header" id="incoming-modal-title">[ INCOMING TRANSMISSION ]</div>
       <div class="call-modal-body">
-        <div class="call-avatar-pulse">📞</div>
+        <div class="call-avatar-pulse" id="incoming-avatar-icon">📞</div>
         <div class="call-peer-name" id="incoming-caller-name">CALLER: --</div>
         <div class="call-status-text" id="incoming-call-subtext">Secure WebRTC Direct Audio Link</div>
       </div>
@@ -739,9 +866,9 @@
   <!-- OUTGOING CALL MODAL -->
   <div id="outgoing-call-modal" class="call-modal">
     <div class="call-modal-box">
-      <div class="call-modal-header">[ OUTGOING AUDIO CALL ]</div>
+      <div class="call-modal-header" id="outgoing-modal-title">[ OUTGOING CALL ]</div>
       <div class="call-modal-body">
-        <div class="call-avatar-pulse">📡</div>
+        <div class="call-avatar-pulse" id="outgoing-avatar-icon">📡</div>
         <div class="call-peer-name" id="outgoing-target-name">CALLING PEER...</div>
         <div class="call-status-text" id="outgoing-call-status">Connecting signaling layer...</div>
       </div>
@@ -751,9 +878,36 @@
     </div>
   </div>
 
+  <!-- ACTIVE VIDEO CALL MODAL / OVERLAY -->
+  <div id="active-video-call-modal">
+    <div class="video-call-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="call-hud-dot"></span>
+        <span style="font-weight:bold;">VIDEO LINK:</span>
+        <span id="video-hud-peer" class="call-hud-peer">--</span>
+        <span id="video-hud-status" class="call-hud-status">[CONNECTING...]</span>
+      </div>
+      <div>
+        <span id="video-hud-timer" class="call-hud-timer">00:00</span>
+      </div>
+    </div>
+    <div class="video-call-viewport">
+      <video id="remote-video" autoplay playsinline></video>
+      <div class="local-pip-container">
+        <video id="local-video" autoplay playsinline muted></video>
+      </div>
+    </div>
+    <div class="video-call-controls">
+      <button id="video-mute-btn" class="video-ctrl-btn" onclick="toggleMuteCall()">🎤 Mute Audio</button>
+      <button id="video-cam-btn" class="video-ctrl-btn" onclick="toggleCameraVideo()">📷 Turn Off Video</button>
+      <button class="video-ctrl-btn end-btn" onclick="endActiveCall()">🔴 End Call</button>
+    </div>
+  </div>
+
   <!-- HIDDEN AUDIO ELEMENT FOR PLAYING REMOTE STREAM -->
   <audio id="remote-audio" autoplay playsinline style="display:none;"></audio>
 
+  <!-- MEDIA VAULT MODAL -->
   <div id="media-modal">
     <div id="media-panel">
       <div id="media-header">
@@ -1004,6 +1158,18 @@
       }
     }
 
+    function openCallTypeSelector() {
+      if (!callUnlocked) {
+        printLine('  [SYSTEM] call is locked. Send "calling" first.', 'warn');
+        return;
+      }
+      document.getElementById('call-type-modal').style.display = 'flex';
+    }
+
+    function closeCallTypeSelector() {
+      document.getElementById('call-type-modal').style.display = 'none';
+    }
+
     async function runCommand(cmd) {
       if (cmd === 'exit') {
         cleanupMediaAndCall();
@@ -1015,11 +1181,7 @@
       }
 
       if (cmd === 'call') {
-        if (!callUnlocked) {
-          printLine('  [SYSTEM] call is locked. Send "calling" first.', 'warn');
-          return;
-        }
-        await startAudioCall();
+        openCallTypeSelector();
         return;
       }
 
@@ -1155,6 +1317,11 @@
       }
     });
 
+    /*
+      =======================================================
+      MEDIA VAULT (IMAGES, VIDEOS, AUDIO)
+      =======================================================
+    */
     function getMediaKey(mediaType) {
       const type = mediaType || 'image';
       return MEDIA_SESSION.keys[type] || null;
@@ -1332,7 +1499,6 @@
     function openMediaModal() {
       document.getElementById('media-modal').style.display = 'block';
 
-      // Show only the type choices first. User should pick a section before key prompt appears.
       document.querySelectorAll('.media-tab').forEach(tab => tab.classList.remove('active'));
       document.querySelectorAll('.media-section').forEach(section => section.classList.remove('active'));
 
@@ -1570,7 +1736,7 @@
 
     /*
       =======================================================
-      WEBRTC DIRECT AUDIO CALL ENGINE & ASYMMETRIC TONE GEN
+      WEBRTC AUDIO & VIDEO CALL ENGINE & ASYMMETRIC TONE GEN
       =======================================================
     */
     const ToneGen = {
@@ -1684,8 +1850,11 @@
     */
     let socket = null;
     let peerConnection = null;
-    let localAudioStream = null;
+    let localMediaStream = null;
+    let currentCallType = 'audio'; // 'audio' | 'video'
+    let incomingCallType = 'audio';
     let isCallMuted = false;
+    let isCameraOff = false;
     let callTimerInterval = null;
     let callDurationSeconds = 0;
     let pendingCandidates = [];
@@ -1728,43 +1897,51 @@
         callUnlocked = true;
         setCallButtonVisible(true);
 
+        incomingCallType = data.callType === 'video' ? 'video' : 'audio';
+
         // ASYMMETRIC RINGTONE BEHAVIOR:
         // When P2 calls P1 -> data.ringtone is true -> play loud looping ringtone
         // When P1 calls P2 -> data.ringtone is false -> SILENT, NO ringtone / audio notification
         if (data.ringtone) {
           ToneGen.startRingtone();
-          printLine(`  [CALL] INCOMING AUDIO CALL FROM ${data.caller.toUpperCase()}`, 'msg');
+          printLine(`  [CALL] INCOMING ${incomingCallType.toUpperCase()} CALL FROM ${data.caller.toUpperCase()}`, 'msg');
         } else {
           // Silent in-app notification only
-          printLine(`  [CALL] INCOMING SILENT CALL FROM ${data.caller.toUpperCase()}`, 'warn');
+          printLine(`  [CALL] INCOMING SILENT ${incomingCallType.toUpperCase()} CALL FROM ${data.caller.toUpperCase()}`, 'warn');
         }
 
+        const isVideo = incomingCallType === 'video';
+        document.getElementById('incoming-modal-title').textContent = isVideo ? '[ INCOMING VIDEO TRANSMISSION ]' : '[ INCOMING AUDIO TRANSMISSION ]';
+        document.getElementById('incoming-avatar-icon').textContent = isVideo ? '📹' : '📞';
         document.getElementById('incoming-caller-name').textContent = `CALLER: ${data.caller.toUpperCase()}`;
+        document.getElementById('incoming-call-subtext').textContent = isVideo ? 'Secure WebRTC Encrypted Video Link (FaceTime)' : 'Secure WebRTC Direct Audio Link';
         document.getElementById('incoming-call-modal').style.display = 'flex';
       });
 
       // CALL RINGING (Caller side acknowledgment)
-      socket.on('call-ringing', () => {
-        document.getElementById('outgoing-call-status').textContent = 'Ringing remote node...';
+      socket.on('call-ringing', (data) => {
+        const isVideo = data.callType === 'video';
+        document.getElementById('outgoing-call-status').textContent = `Ringing remote node (${isVideo ? 'Video' : 'Audio'})...`;
         ToneGen.startRingbackTone();
       });
 
       // CALL ACCEPTED HANDLER
-      socket.on('call-accepted', async () => {
+      socket.on('call-accepted', async (data) => {
         ToneGen.stop();
         document.getElementById('incoming-call-modal').style.display = 'none';
         document.getElementById('outgoing-call-modal').style.display = 'none';
 
-        showActiveCallHUD();
+        currentCallType = (data && data.callType) ? data.callType : currentCallType;
+        showActiveCallUI(currentCallType);
         startCallTimer();
-        printLine('  [CALL] Peer accepted. Connecting secure audio stream...', 'system');
+        printLine(`  [CALL] Peer accepted. Connecting secure ${currentCallType} stream...`, 'system');
 
         if (isInitiator) {
           try {
             await setupPeerConnection();
             const offer = await peerConnection.createOffer({
               offerToReceiveAudio: true,
-              offerToReceiveVideo: false
+              offerToReceiveVideo: currentCallType === 'video'
             });
             await peerConnection.setLocalDescription(offer);
             socket.emit('webrtc-offer', { sdp: offer });
@@ -1793,7 +1970,7 @@
       socket.on('call-ended', (data) => {
         ToneGen.stop();
         cleanupMediaAndCall();
-        printLine(`  [CALL] Audio link terminated (${data.reason || 'session closed'})`, 'system');
+        printLine(`  [CALL] Call terminated (${data.reason || 'session closed'})`, 'system');
       });
 
       // WEBRTC SDP OFFER
@@ -1856,19 +2033,40 @@
 
       peerConnection = new RTCPeerConnection({ iceServers });
 
-      // Add local microphone audio tracks
-      if (localAudioStream) {
-        localAudioStream.getAudioTracks().forEach(track => {
-          peerConnection.addTrack(track, localAudioStream);
+      // Add local media tracks (Audio & Video)
+      if (localMediaStream) {
+        localMediaStream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, localMediaStream);
         });
       }
 
-      // Handle receiving remote audio
+      // Handle receiving remote audio and video tracks
       peerConnection.ontrack = (event) => {
+        const remoteVideo = document.getElementById('remote-video');
         const remoteAudio = document.getElementById('remote-audio');
-        if (remoteAudio && event.streams && event.streams[0]) {
-          remoteAudio.srcObject = event.streams[0];
-          remoteAudio.play().catch(() => {});
+
+        if (event.streams && event.streams[0]) {
+          if (currentCallType === 'video') {
+            // For video calls, audio is routed through remoteVideo to prevent dual playback noise
+            if (remoteVideo) {
+              remoteVideo.srcObject = event.streams[0];
+              remoteVideo.muted = false;
+              remoteVideo.play().catch(() => {});
+            }
+            if (remoteAudio) {
+              remoteAudio.srcObject = null;
+            }
+          } else {
+            // For audio calls, route exclusively through remoteAudio
+            if (remoteAudio) {
+              remoteAudio.srcObject = event.streams[0];
+              remoteAudio.muted = false;
+              remoteAudio.play().catch(() => {});
+            }
+            if (remoteVideo) {
+              remoteVideo.srcObject = null;
+            }
+          }
         }
       };
 
@@ -1881,24 +2079,33 @@
 
       // Handle connection state changes
       peerConnection.onconnectionstatechange = () => {
-        const statusEl = document.getElementById('call-hud-status');
-        if (!statusEl) return;
+        const audioStatus = document.getElementById('call-hud-status');
+        const videoStatus = document.getElementById('video-hud-status');
+        const state = peerConnection.connectionState;
 
-        if (peerConnection.connectionState === 'connected') {
-          statusEl.textContent = '[CONNECTED]';
-          statusEl.style.color = '#33ff33';
-        } else if (peerConnection.connectionState === 'connecting') {
-          statusEl.textContent = '[CONNECTING...]';
-          statusEl.style.color = '#ffff33';
-        } else if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
-          statusEl.textContent = `[${peerConnection.connectionState.toUpperCase()}]`;
-          statusEl.style.color = '#ff4444';
-        }
+        const updateStatusText = (el) => {
+          if (!el) return;
+          if (state === 'connected') {
+            el.textContent = '[CONNECTED]';
+            el.style.color = '#33ff33';
+          } else if (state === 'connecting') {
+            el.textContent = '[CONNECTING...]';
+            el.style.color = '#ffff33';
+          } else if (state === 'disconnected' || state === 'failed') {
+            el.textContent = `[${state.toUpperCase()}]`;
+            el.style.color = '#ff4444';
+          }
+        };
+
+        updateStatusText(audioStatus);
+        updateStatusText(videoStatus);
       };
     }
 
-    // START OUTGOING CALL
-    async function startAudioCall() {
+    // START OUTGOING CALL (Audio or Video)
+    async function startCall(callType = 'audio') {
+      closeCallTypeSelector();
+
       if (!ROLE) {
         printLine('  [SYSTEM] Select node identity first.', 'warn');
         return;
@@ -1909,40 +2116,63 @@
         return;
       }
 
-      if (peerConnection || localAudioStream) {
-        printLine('  [CALL] Audio call already in progress.', 'warn');
+      if (peerConnection || localMediaStream) {
+        printLine('  [CALL] Communication link already active.', 'warn');
         return;
       }
 
-      ToneGen.init();
+      currentCallType = callType === 'video' ? 'video' : 'audio';
       const targetPeer = ROLE === 'p1' ? 'p2' : 'p1';
       isInitiator = true;
+      const isVideo = currentCallType === 'video';
 
-      printLine(`  [CALL] Requesting microphone access...`, 'system');
+      // SHOW OUTGOING CALL DIALOG BOX IMMEDIATELY
+      document.getElementById('outgoing-modal-title').textContent = isVideo ? '[ OUTGOING VIDEO CALL ]' : '[ OUTGOING AUDIO CALL ]';
+      document.getElementById('outgoing-avatar-icon').textContent = isVideo ? '📹' : '📞';
+      document.getElementById('outgoing-target-name').textContent = `CALLING ${targetPeer.toUpperCase()} (${isVideo ? 'VIDEO' : 'AUDIO'})...`;
+      document.getElementById('outgoing-call-status').textContent = isVideo ? 'Starting camera & initializing link...' : 'Initializing audio link...';
+      document.getElementById('outgoing-call-modal').style.display = 'flex';
+
+      ToneGen.init();
+      printLine(`  [CALL] Initializing ${isVideo ? 'video' : 'audio'} call to ${targetPeer.toUpperCase()}...`, 'system');
 
       try {
-        // AUDIO ONLY. No video or camera permissions.
-        localAudioStream = await navigator.mediaDevices.getUserMedia({
+        const constraints = {
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true
           },
-          video: false
-        });
+          video: isVideo ? {
+            facingMode: 'user',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          } : false
+        };
+
+        localMediaStream = await navigator.mediaDevices.getUserMedia(constraints);
         isCallMuted = false;
+        isCameraOff = false;
+
+        if (isVideo) {
+          const localVid = document.getElementById('local-video');
+          if (localVid) {
+            localVid.srcObject = localMediaStream;
+            localVid.muted = true;
+            localVid.volume = 0;
+            localVid.play().catch(() => {});
+          }
+        }
       } catch (err) {
-        printLine(`  [CALL-ERR] Microphone access denied: ${err.message}`, 'warn');
+        printLine(`  [CALL-ERR] Media permission denied: ${err.message}`, 'warn');
+        cleanupMediaAndCall();
         return;
       }
 
-      document.getElementById('outgoing-target-name').textContent = `CALLING ${targetPeer.toUpperCase()}...`;
-      document.getElementById('outgoing-call-status').textContent = 'Requesting direct audio link...';
-      document.getElementById('outgoing-call-modal').style.display = 'flex';
+      document.getElementById('outgoing-call-status').textContent = 'Connecting signaling layer...';
 
-      printLine(`  [CALL] Dialing ${targetPeer.toUpperCase()}...`, 'system');
       if (socket) {
-        socket.emit('call-request', { caller: ROLE });
+        socket.emit('call-request', { caller: ROLE, callType: currentCallType });
       } else {
         printLine('  [CALL-ERR] Signaling socket not connected.', 'warn');
         cleanupMediaAndCall();
@@ -1954,24 +2184,42 @@
       ToneGen.stop();
       document.getElementById('incoming-call-modal').style.display = 'none';
       isInitiator = false;
+      currentCallType = incomingCallType;
 
-      printLine(`  [CALL] Requesting microphone access to accept...`, 'system');
+      const isVideo = currentCallType === 'video';
+      printLine(`  [CALL] Requesting ${isVideo ? 'camera & microphone' : 'microphone'} access to accept...`, 'system');
 
       try {
-        // AUDIO ONLY. No video or camera permissions.
-        localAudioStream = await navigator.mediaDevices.getUserMedia({
+        const constraints = {
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true
           },
-          video: false
-        });
+          video: isVideo ? {
+            facingMode: 'user',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          } : false
+        };
+
+        localMediaStream = await navigator.mediaDevices.getUserMedia(constraints);
         isCallMuted = false;
+        isCameraOff = false;
+
+        if (isVideo) {
+          const localVid = document.getElementById('local-video');
+          if (localVid) {
+            localVid.srcObject = localMediaStream;
+            localVid.muted = true;
+            localVid.volume = 0;
+            localVid.play().catch(() => {});
+          }
+        }
       } catch (err) {
-        printLine(`  [CALL-ERR] Microphone access denied: ${err.message}`, 'warn');
+        printLine(`  [CALL-ERR] Device permission denied: ${err.message}`, 'warn');
         if (socket) {
-          socket.emit('call-response', { accepted: false, reason: 'Microphone permission denied' });
+          socket.emit('call-response', { accepted: false, reason: 'Media permission denied' });
         }
         cleanupMediaAndCall();
         return;
@@ -1981,7 +2229,7 @@
       if (socket) {
         socket.emit('call-response', { accepted: true });
       }
-      showActiveCallHUD();
+      showActiveCallUI(currentCallType);
       startCallTimer();
     }
 
@@ -2012,28 +2260,55 @@
         socket.emit('call-end', { reason: 'User hung up' });
       }
       cleanupMediaAndCall();
-      printLine('  [CALL] Call ended by local node.', 'system');
+      printLine('  [CALL] Call terminated by local node.', 'system');
     }
 
-    // MUTE / UNMUTE TOGGLE
+    // MUTE / UNMUTE MICROPHONE
     function toggleMuteCall() {
-      if (!localAudioStream) return;
-      isCallMuted = !isCallMuted;
-      localAudioStream.getAudioTracks().forEach(track => {
-        track.enabled = !isCallMuted;
-      });
+      if (!localMediaStream) return;
+      const audioTrack = localMediaStream.getAudioTracks()[0];
+      if (!audioTrack) return;
 
-      const btn = document.getElementById('call-mute-btn');
-      if (btn) {
-        btn.textContent = isCallMuted ? '🔇 Unmute' : '🎤 Mute';
-        btn.classList.toggle('muted', isCallMuted);
+      isCallMuted = !isCallMuted;
+      audioTrack.enabled = !isCallMuted;
+
+      const audioBtn = document.getElementById('call-mute-btn');
+      const videoMuteBtn = document.getElementById('video-mute-btn');
+
+      const label = isCallMuted ? '🔇 Unmute' : '🎤 Mute';
+      if (audioBtn) {
+        audioBtn.textContent = label;
+        audioBtn.classList.toggle('muted', isCallMuted);
       }
+      if (videoMuteBtn) {
+        videoMuteBtn.textContent = isCallMuted ? '🔇 Unmute Audio' : '🎤 Mute Audio';
+        videoMuteBtn.classList.toggle('muted', isCallMuted);
+      }
+
       printLine(`  [CALL] Microphone ${isCallMuted ? 'MUTED' : 'UNMUTED'}`, 'system');
+    }
+
+    // TURN CAMERA ON / OFF
+    function toggleCameraVideo() {
+      if (!localMediaStream) return;
+      const videoTrack = localMediaStream.getVideoTracks()[0];
+      if (!videoTrack) return;
+
+      isCameraOff = !isCameraOff;
+      videoTrack.enabled = !isCameraOff;
+
+      const btn = document.getElementById('video-cam-btn');
+      if (btn) {
+        btn.textContent = isCameraOff ? '📷 Turn On Video' : '📷 Turn Off Video';
+        btn.classList.toggle('muted', isCameraOff);
+      }
+      printLine(`  [CALL] Camera video ${isCameraOff ? 'DISABLED' : 'ENABLED'}`, 'system');
     }
 
     // CLEANUP MEDIA STREAM AND CALL STATE
     function cleanupMediaAndCall() {
       ToneGen.stop();
+      closeCallTypeSelector();
 
       if (callTimerInterval) {
         clearInterval(callTimerInterval);
@@ -2041,12 +2316,12 @@
       }
       callDurationSeconds = 0;
 
-      // STOP ALL MICROPHONE TRACKS IMMEDIATELY
-      if (localAudioStream) {
-        localAudioStream.getTracks().forEach(track => {
+      // STOP ALL MICROPHONE AND CAMERA TRACKS IMMEDIATELY
+      if (localMediaStream) {
+        localMediaStream.getTracks().forEach(track => {
           track.stop();
         });
-        localAudioStream = null;
+        localMediaStream = null;
       }
 
       // CLOSE PEER CONNECTION
@@ -2062,9 +2337,20 @@
         remoteAudio.srcObject = null;
       }
 
+      const remoteVideo = document.getElementById('remote-video');
+      if (remoteVideo) {
+        remoteVideo.srcObject = null;
+      }
+
+      const localVideo = document.getElementById('local-video');
+      if (localVideo) {
+        localVideo.srcObject = null;
+      }
+
       document.getElementById('incoming-call-modal').style.display = 'none';
       document.getElementById('outgoing-call-modal').style.display = 'none';
       document.getElementById('active-call-hud').style.display = 'none';
+      document.getElementById('active-video-call-modal').style.display = 'none';
 
       const muteBtn = document.getElementById('call-mute-btn');
       if (muteBtn) {
@@ -2072,17 +2358,39 @@
         muteBtn.classList.remove('muted');
       }
 
+      const videoMuteBtn = document.getElementById('video-mute-btn');
+      if (videoMuteBtn) {
+        videoMuteBtn.textContent = '🎤 Mute Audio';
+        videoMuteBtn.classList.remove('muted');
+      }
+
+      const camBtn = document.getElementById('video-cam-btn');
+      if (camBtn) {
+        camBtn.textContent = '📷 Turn Off Video';
+        camBtn.classList.remove('muted');
+      }
+
       isCallMuted = false;
+      isCameraOff = false;
       isInitiator = false;
       pendingCandidates = [];
     }
 
-    function showActiveCallHUD() {
+    function showActiveCallUI(type) {
       const peer = ROLE === 'p1' ? 'P2' : 'P1';
-      document.getElementById('call-hud-peer').textContent = peer;
-      document.getElementById('call-hud-status').textContent = '[CONNECTED]';
-      document.getElementById('call-hud-status').style.color = '#33ff33';
-      document.getElementById('active-call-hud').style.display = 'flex';
+      if (type === 'video') {
+        document.getElementById('video-hud-peer').textContent = peer;
+        document.getElementById('video-hud-status').textContent = '[CONNECTED]';
+        document.getElementById('video-hud-status').style.color = '#33ff33';
+        document.getElementById('active-video-call-modal').style.display = 'flex';
+        document.getElementById('active-call-hud').style.display = 'none';
+      } else {
+        document.getElementById('call-hud-peer').textContent = peer;
+        document.getElementById('call-hud-status').textContent = '[CONNECTED]';
+        document.getElementById('call-hud-status').style.color = '#33ff33';
+        document.getElementById('active-call-hud').style.display = 'flex';
+        document.getElementById('active-video-call-modal').style.display = 'none';
+      }
     }
 
     function startCallTimer() {
@@ -2098,10 +2406,13 @@
     function updateCallTimerDisplay() {
       const mins = String(Math.floor(callDurationSeconds / 60)).padStart(2, '0');
       const secs = String(callDurationSeconds % 60).padStart(2, '0');
-      const timerEl = document.getElementById('call-hud-timer');
-      if (timerEl) {
-        timerEl.textContent = `${mins}:${secs}`;
-      }
+      const timeStr = `${mins}:${secs}`;
+
+      const audioTimer = document.getElementById('call-hud-timer');
+      if (audioTimer) audioTimer.textContent = timeStr;
+
+      const videoTimer = document.getElementById('video-hud-timer');
+      if (videoTimer) videoTimer.textContent = timeStr;
     }
   </script>
 </body>

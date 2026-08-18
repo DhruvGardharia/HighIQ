@@ -460,13 +460,13 @@ io.on("connection", (socket) => {
     }
     session.users[role] = true;
 
-    socket.emit("session-joined", {
-      role,
+    socket.emit("session-state", {
+      role: socketRole,
       activeCall: session.call && (session.call.active || session.call.ringing) ? session.call : null
     });
   });
 
-  socket.on("call-request", ({ caller }) => {
+  socket.on("call-request", ({ caller, callType }) => {
     const role = caller || socketRole;
     if (!["p1", "p2"].includes(role)) {
       return socket.emit("call-unavailable", { reason: "Invalid caller identity." });
@@ -483,22 +483,26 @@ io.on("connection", (socket) => {
       return socket.emit("call-unavailable", { reason: "Subsystem line busy in another call." });
     }
 
+    const type = callType === "video" ? "video" : "audio";
+
     session.call = {
       active: false,
       ringing: true,
       caller: role,
       receiver: peerRole,
+      callType: type,
       startedAt: null
     };
 
     // Notify caller that call is ringing
-    socket.emit("call-ringing", { target: peerRole });
+    socket.emit("call-ringing", { target: peerRole, callType: type });
 
     // Notify peer with asymmetric ringtone instruction
     // P2 calling P1 -> P1 gets loud ringtone (ringtone: true)
     // P1 calling P2 -> P2 gets silent notification only (ringtone: false)
     io.to(peerRole).emit("incoming-call", {
       caller: role,
+      callType: type,
       ringtone: role === "p2" // Only true when P2 calls P1
     });
   });
@@ -510,16 +514,17 @@ io.on("connection", (socket) => {
 
     const callerRole = session.call.caller;
     const receiverRole = session.call.receiver;
+    const callType = session.call.callType || "audio";
 
     if (accepted) {
       session.call.active = true;
       session.call.ringing = false;
       session.call.startedAt = Date.now();
 
-      io.to(callerRole).emit("call-accepted", { peer: receiverRole });
-      io.to(receiverRole).emit("call-accepted", { peer: callerRole });
+      io.to(callerRole).emit("call-accepted", { peer: receiverRole, callType });
+      io.to(receiverRole).emit("call-accepted", { peer: callerRole, callType });
     } else {
-      session.call = { active: false, ringing: false, caller: null, receiver: null, startedAt: null };
+      session.call = { active: false, ringing: false, caller: null, receiver: null, callType: "audio", startedAt: null };
       io.to(callerRole).emit("call-declined", { reason: reason || "Call declined by peer." });
       io.to(receiverRole).emit("call-declined", { reason: "Call declined." });
     }
@@ -545,7 +550,7 @@ io.on("connection", (socket) => {
 
   socket.on("call-end", ({ reason }) => {
     if (session.call && (session.call.active || session.call.ringing)) {
-      session.call = { active: false, ringing: false, caller: null, receiver: null, startedAt: null };
+      session.call = { active: false, ringing: false, caller: null, receiver: null, callType: "audio", startedAt: null };
       io.to("session-room").emit("call-ended", { reason: reason || "Call ended." });
     }
   });
